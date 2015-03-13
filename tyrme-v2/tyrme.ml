@@ -36,7 +36,7 @@ let in_i32  (buf : in_channel) : int = input_binary_int buf
 
 
 (* Fonction d'assemblage d'instruction *)
-let assemble_instr (buf : in_channel) : instr -> unit = failwith "assemblage d'une instruction"
+let assemble_instr (buf : out_channel) : instr -> unit = failwith "assemblage d'une instruction"
 
 
 (* Fonction d'assemblage d'une liste d'instructions *)
