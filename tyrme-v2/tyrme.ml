@@ -6,6 +6,32 @@
    dans ast.mli *)
 open Ast
 
+(** Expressions of Tyrme. *)
+
+type var = string
+
+type value =
+  | ValVar of var
+  | Int of int
+  | Bool of bool
+  | String of string
+  | Unit
+
+type binop = Add | Eq | And | Cat | App
+
+
+                            
+type expr =
+(*  | Var of var*)
+  | Const of value
+  | Binop of binop * expr * expr
+ (* | If of expr * expr * expr
+  | Let of var * expr * expr
+  | Letf of var * var * expr * expr
+  | Print of expr * expr
+  | Pair of expr * expr
+  | Fst of expr 
+  | Snd of expr*)
 
 (* fonction de parsing: prends une expression de Tyrme et retourne
    l'arbre syntactique *)
@@ -16,10 +42,14 @@ let parse (s : string) : expr = Parser.main Lexer.token (Lexing.from_string s)
 (* Instructions of the MV                                     *)
 (**************************************************************)
 
-type instr = DEFINISSEZ_LES_INSTRUCTIONS
+type instr = Push | Const of int | Pop | Add
 
+(* Affiche les chaines associées au instructions *)
+let string_of_instr : instr -> string = function
+    | Push -> "Push ;"
+    | Add -> "Add ;"
+    | Const n -> "Const "^(string_of_int n)^" ;"
 
-let string_of_instr : instr -> string = failwith "peut-etre une fonction d'impression ?"
 
 
 (**************************************************************)
@@ -100,15 +130,27 @@ type mot =
 let rec string_of_mot : mot -> string = failwith "peut-etre un pretty-printer?"
 
 
-type mv_state = L_ETAT_DE_LA_MACHINE_VIRTUELLE
+type mv_state = {
+  mutable acc: int;
+  code: instr array;
+  mutable pc: int; (* indice de l’instruction courante dans code *)
+  stack: int array;
+  mutable sp: int; (* indice du sommet de la pile dans stack *)
+}
 
 
 (* retourne l'accumulateur de l'etat donne en argument *)
-let get_acc (s : mv_state) : mot = failwith "l'accumulateur de l'etat"
-
+(*let get_acc (s : mv_state) : mot = failwith "Not implemented yet"*)
+let get_acc (s : mv_state) : int = s.acc
 
 (* Pour construire l'etat de la machine au debut de l'execution *)
-let init (c : instr list) : mv_state = failwith "etat de depart de la machine"
+let init (c : instr array) : mv_state =
+  { 
+    code = c; 
+    stack = Array.make 1000 0;
+    pc = 0;
+    sp = -1;   
+    acc = 52 }
 
 
 (* Peut-etre une fonction d'impression ? *)
@@ -117,13 +159,40 @@ let print_state (s : mv_state) : unit = failwith "pretty-printing de l'etat de l
 
 
 (* La fonction d'execution de la machine *)
-let machine (s : mv_state) : mv_state = failwith "execution de la machine"
+(*let machine (s : mv_state) : mv_state = failwith "execution de la machine"*)
+let machine s = 
+  while s.pc < Array.length s.code do
+    print_string("PC : ");
+    print_int(s.pc);print_endline("");
+    print_endline( string_of_instr(s.code.(s.pc)) );
+    begin
+      match s.code.(s.pc) with
+	| Const n ->
+	  s.acc <- n
+	| Push ->
+	  s.sp <- s.sp + 1;
+	  s.stack.(s.sp) <- s.acc
+	| Pop ->
+	  s.sp <- s.sp -1
+	| Add ->
+	  s.acc <- s.stack.(s.sp) + s.acc;
+    end;
+    print_string("PC : "); print_int(s.pc);print_endline("");
+    print_string("ACC : "); print_int(s.acc);print_endline("\n");
+    s.pc <- s.pc + 1;
+  done; s
 
+
+let ex_instru = [|Const 1; Push; Const 2;Add; Pop|]
 
 (* La fonction d'evaluation: retourne l'accumulateur a la fin de l'evaluation *)
-let eval (c : instr list) : mot =
+(*let eval (c : instr array) : mot =*)
+let eval (c : instr array) : int =  
   let s = machine (init c) in get_acc s
 
+
+
+let x = eval ex_instru
 
 
 
@@ -131,16 +200,37 @@ let eval (c : instr list) : mot =
 (* Compilation                                                *)
 (**************************************************************)
 
-type env = UN_ENV_DE_COMPILATION
+(* Le type environnement *)
+type env = (var * int) list
 
-let empty_env = failwith "l'environement vide"
+
+(* L'environnement d'utilisation des variables *)
+let empty_env = []
+
+
+(* Représentation d'un type *)
+let repr = function
+  | Int i      -> i
+  | Bool true  -> 1
+  | Bool false -> 0
+
+
+(* Incrémente la position d'une variable dans la pile *)
+let succ sv = match sv with
+  | s, i -> (s,(i+1))
+
+
+(* Applique la fonction succ sur tous les éléments de la liste *)
+let envsucc e = List.map succ e
 
 
 (* La fonction de compilation *)
-let rec compil : env * expr -> instr list = failwith "compilation"
-
-
-
+let rec compil : env * expr -> instr list = function
+  | _,Const v -> [Const (repr v)]
+  | env,Binop (o,e1,e2) -> compil (env,e1) @
+    [Push] @
+    compil ((envsucc env),e2) @
+    [op o; Pop]
 
 
 (* Pour lire le codex *)
