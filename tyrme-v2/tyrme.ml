@@ -6,49 +6,37 @@
    dans ast.mli *)
 open Ast
 
-(** Expressions of Tyrme. *)
-
-type var = string
-
-type value =
-  | ValVar of var
-  | Int of int
-  | Bool of bool
-  | String of string
-  | Unit
-
-type binop = Add | Eq | And | Cat | App
 
 
-                            
-type expr =
-(*  | Var of var*)
-  | Const of value
-  | Binop of binop * expr * expr
- (* | If of expr * expr * expr
-  | Let of var * expr * expr
-  | Letf of var * var * expr * expr
-  | Print of expr * expr
-  | Pair of expr * expr
-  | Fst of expr 
-  | Snd of expr*)
 
 (* fonction de parsing: prends une expression de Tyrme et retourne
    l'arbre syntactique *)
-let parse (s : string) : expr = Parser.main Lexer.token (Lexing.from_string s)
-
+let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string s)
+(* FIX *)
 
 (**************************************************************)
 (* Instructions of the MV                                     *)
 (**************************************************************)
 
-type instr = Push | Const of int | Pop | Add
+type instr = Push | Consti of int | Pop | Bin_op of int;;
+
+
+Binop(Add,Const(Int(2)),Const(Int(1)));;
+
+(* Ne traite que les opcode des opérations binaires *)
+let string_of_opcode_binop = function
+  | 13 -> "Add"
+  | _ -> failwith "TODO"
+
+
 
 (* Affiche les chaines associées au instructions *)
 let string_of_instr : instr -> string = function
     | Push -> "Push ;"
-    | Add -> "Add ;"
-    | Const n -> "Const "^(string_of_int n)^" ;"
+    | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
+    | Consti n -> "Const "^(string_of_int n)^" ;"
+    | Pop -> "Pop ;"
+
 
 
 
@@ -127,72 +115,103 @@ type mot =
   | PointBloc of (tag * (mot list))
 
 
-let rec string_of_mot : mot -> string = failwith "peut-etre un pretty-printer?"
+let rec string_of_mot : mot -> string = function
+  | MotInt n -> string_of_int n
+  | PointString s -> s
+  | _ -> failwith "mot non traite"
+
 
 
 type mv_state = {
-  mutable acc: int;
+  mutable acc: mot;
   code: instr array;
   mutable pc: int; (* indice de l’instruction courante dans code *)
-  stack: int array;
+  stack: mot array;
   mutable sp: int; (* indice du sommet de la pile dans stack *)
 }
 
 
 (* retourne l'accumulateur de l'etat donne en argument *)
-(*let get_acc (s : mv_state) : mot = failwith "Not implemented yet"*)
-let get_acc (s : mv_state) : int = s.acc
+let get_acc (s : mv_state) : mot = s.acc
+(*let get_acc (s : mv_state) : int = s.acc*)
+
+
 
 (* Pour construire l'etat de la machine au debut de l'execution *)
 let init (c : instr array) : mv_state =
   { 
     code = c; 
-    stack = Array.make 1000 0;
+    stack = Array.make 1000 (MotInt(0));
     pc = 0;
     sp = -1;   
-    acc = 52 }
+    acc = MotInt(52) }
 
 
-(* Peut-etre une fonction d'impression ? *)
-let print_state (s : mv_state) : unit = failwith "pretty-printing de l'etat de la machine"
+
+(* Affiche l'état de la pile *)
+let print_stack st sp =
+  let rec print_stack_rec stack pointer ac =
+    if( ac > pointer)
+    then
+      ()
+    else
+      begin
+	print_string(string_of_mot(stack.(ac)));
+	print_stack_rec stack pointer (ac+1)
+      end
+  in print_stack_rec st sp 0;;
+
+
+
+(*  *)
+let print_state (s : mv_state) : unit =
+  print_string("PC : ");
+  print_int(s.pc);print_endline("");
+  print_string("STACK : ");print_stack s.stack s.sp; print_endline("");
+  print_endline( string_of_instr(s.code.(s.pc)) )
                
 
 
 (* La fonction d'execution de la machine *)
-(*let machine (s : mv_state) : mv_state = failwith "execution de la machine"*)
-let machine s = 
+let machine (s : mv_state) : mv_state =
   while s.pc < Array.length s.code do
-    print_string("PC : ");
-    print_int(s.pc);print_endline("");
-    print_endline( string_of_instr(s.code.(s.pc)) );
+    print_state s;
     begin
       match s.code.(s.pc) with
-	| Const n ->
-	  s.acc <- n
+	| Consti n ->
+	  s.acc <- MotInt(n)
 	| Push ->
 	  s.sp <- s.sp + 1;
 	  s.stack.(s.sp) <- s.acc
 	| Pop ->
 	  s.sp <- s.sp -1
-	| Add ->
-	  s.acc <- s.stack.(s.sp) + s.acc;
+	| Bin_op n ->
+	  begin 
+	    (
+	      match n with
+		| 13 -> 
+		  begin
+		    match s.stack.(s.sp), s.acc with
+		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a+b))
+		      | _ -> failwith "addition non valide"
+		  end
+		| _ -> 
+		  failwith "Ce binop n'est pas supporte"
+	    );
+   	      s.sp <- s.sp -1(* On pop après chaque opération *)
+	  end
     end;
-    print_string("PC : "); print_int(s.pc);print_endline("");
-    print_string("ACC : "); print_int(s.acc);print_endline("\n");
     s.pc <- s.pc + 1;
   done; s
 
 
-let ex_instru = [|Const 1; Push; Const 2;Add; Pop|]
 
 (* La fonction d'evaluation: retourne l'accumulateur a la fin de l'evaluation *)
-(*let eval (c : instr array) : mot =*)
-let eval (c : instr array) : int =  
+let eval (c : instr array) : mot =  
   let s = machine (init c) in get_acc s
 
 
 
-let x = eval ex_instru
 
 
 
@@ -213,7 +232,7 @@ let repr = function
   | Int i      -> i
   | Bool true  -> 1
   | Bool false -> 0
-
+  | _ -> failwith "repr non supporte"
 
 (* Incrémente la position d'une variable dans la pile *)
 let succ sv = match sv with
@@ -224,22 +243,39 @@ let succ sv = match sv with
 let envsucc e = List.map succ e
 
 
+
+(* Convertit un binop  en opcode *)
+let opcode i = match i with
+  | Add -> 13
+  | _ -> failwith "pas traite"
+
+
+
 (* La fonction de compilation *)
 let rec compil : env * expr -> instr list = function
-  | _,Const v -> [Const (repr v)]
+  | _,Const v -> [Consti (repr v)]
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
     compil ((envsucc env),e2) @
-    [op o; Pop]
-
+    [Bin_op (opcode o); Pop]
+  | _,_ -> failwith "pas encore exp"
 
 (* Pour lire le codex *)
 let lire_codex () = 
-  print_string (string_of_mot (eval (disassemble_filename "codex.tm")))
+  print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))))
                
                
 (* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
 let ex_compil () =
-  print_string (string_of_mot (eval (compil (empty_env, parse "let x = 1 in x + 2"))))
+  print_string (string_of_mot 
+		  (eval 
+		     (Array.of_list(compil(empty_env, parse "let x = 1 in x + 2")))
+		  )
+  )
 
+(** TEST *)
 
+(* addition *)
+let ex_instru = [|Consti 1; Push; Consti 2; Bin_op 13; Pop|]
+
+let x = eval ex_instru
