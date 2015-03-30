@@ -18,7 +18,7 @@ let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string 
 (* Instructions of the MV                                     *)
 (**************************************************************)
 
-type instr = Push | Consti of int | Pop | Bin_op of int;;
+type instr = Push | Consti of int | Pop of int | Bin_op of int;;
 
 
 Binop(Add,Const(Int(2)),Const(Int(1)));;
@@ -35,7 +35,7 @@ let string_of_instr : instr -> string = function
     | Push -> "Push ;"
     | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
     | Consti n -> "Const "^(string_of_int n)^" ;"
-    | Pop -> "Pop ;"
+    | Pop n -> "Pop "^(string_of_int n)^" ;"
 
 
 
@@ -167,7 +167,6 @@ let print_stack st sp =
 let print_state (s : mv_state) : unit =
   print_string("PC : ");
   print_int(s.pc);print_endline("");
-  print_string("STACK : ");print_stack s.stack s.sp; print_endline("");
   print_endline( string_of_instr(s.code.(s.pc)) )
                
 
@@ -183,8 +182,9 @@ let machine (s : mv_state) : mv_state =
 	| Push ->
 	  s.sp <- s.sp + 1;
 	  s.stack.(s.sp) <- s.acc
-	| Pop ->
-	  s.sp <- s.sp -1
+	| Pop n ->
+	  assert( n <= s.sp);
+	  s.sp <- s.sp -n
 	| Bin_op n ->
 	  begin 
 	    (
@@ -201,6 +201,8 @@ let machine (s : mv_state) : mv_state =
    	      s.sp <- s.sp -1(* On pop après chaque opération *)
 	  end
     end;
+    print_string("ACC : ");print_string(string_of_mot(s.acc) );print_endline("");
+    print_string("STACK : ");print_stack s.stack s.sp; print_endline("\n");
     s.pc <- s.pc + 1;
   done; s
 
@@ -257,7 +259,7 @@ let rec compil : env * expr -> instr list = function
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
     compil ((envsucc env),e2) @
-    [Bin_op (opcode o); Pop]
+    [Bin_op (opcode o); Pop 1]
   | _,_ -> failwith "pas encore exp"
 
 (* Pour lire le codex *)
@@ -276,6 +278,8 @@ let ex_compil () =
 (** TEST *)
 
 (* addition *)
-let ex_instru = [|Consti 1; Push; Consti 2; Bin_op 13; Pop|]
+let ex_instru = [|Consti 1; Push; Consti 2; Bin_op 13;|];;
 
-let x = eval ex_instru
+print_string("Resultat I ->  "^string_of_mot(eval ex_instru)^"\n")
+
+
