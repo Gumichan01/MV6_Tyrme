@@ -25,7 +25,11 @@ Binop(Add,Const(Int(2)),Const(Int(1)));;
 
 (* Ne traite que les opcode des opérations binaires *)
 let string_of_opcode_binop = function
-  | 13 -> "Add"
+  | 15 -> "Add"
+  | 16 -> "Sub"
+  | 17 -> "Mul"
+  | 18 -> "Div"
+  | 19 -> "Eqi"
   | _ -> failwith "TODO"
 
 
@@ -122,6 +126,12 @@ let rec string_of_mot : mot -> string = function
 
 
 
+
+let int_equal (x : int) (y : int ) : int =
+  if(x = y) then 1 else 0;;
+
+
+
 type mv_state = {
   mutable acc: mot;
   code: instr array;
@@ -189,11 +199,35 @@ let machine (s : mv_state) : mv_state =
 	  begin 
 	    (
 	      match n with
-		| 13 -> 
+		| 15 -> 
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a+b))
-		      | _ -> failwith "addition non valide"
+		      | _ -> failwith "Addition non valide"
+		  end
+		| 16 ->
+		  begin
+		    match s.stack.(s.sp), s.acc with
+		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a-b))
+		      | _ -> failwith "Soustraction non valide"  
+		  end
+		| 17 ->
+		  begin
+		    match s.stack.(s.sp), s.acc with
+		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a*b))
+		      | _ -> failwith "Multiplication non valide"  
+		  end
+		| 18 ->
+		  begin
+		    match s.stack.(s.sp), s.acc with
+		      | MotInt(a),MotInt(b) -> assert(b <> 0);s.acc <- MotInt((a/b))
+		      | _ -> failwith "Division non valide"  
+		  end
+		| 19 ->
+		  begin
+		    match s.stack.(s.sp), s.acc with
+		      | MotInt(a),MotInt(b) -> s.acc <- MotInt(int_equal a b)
+		      | _ -> failwith "Egalité non valide"  
 		  end
 		| _ -> 
 		  failwith "Ce binop n'est pas supporte"
@@ -275,11 +309,34 @@ let ex_compil () =
 		  )
   )
 
+
+
 (** TEST *)
 
 (* addition *)
-let ex_instru = [|Consti 1; Push; Consti 2; Bin_op 13;|];;
+let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15;|];;
+let ex_instru2 = [|Consti 3; Push; Consti 2; Bin_op 16;|];;
+let ex_instru3 = [|Consti 3; Push; Consti 2; Bin_op 17;|];;
+let ex_instru4 = [|Consti 24; Push; Consti 6; Bin_op 18;|];;
+let ex_instru5 = [|Consti 0; Push; Consti 0; Bin_op 19;|];;
 
-print_string("Resultat I ->  "^string_of_mot(eval ex_instru)^"\n")
+print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat II sub ->  "^string_of_mot(eval ex_instru2)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat III mul ->  "^string_of_mot(eval ex_instru3)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat IV div ->  "^string_of_mot(eval ex_instru4)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat V eqi ->  "^string_of_mot(eval ex_instru5)^"\n\n");;
+print_endline("");;
+
+
+
+
 
 
