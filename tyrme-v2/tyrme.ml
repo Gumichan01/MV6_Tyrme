@@ -16,15 +16,37 @@ let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string 
 
 (**************************************************************)
 (* Instructions of the MV                                     *)
-(**************************************************************)
+(*********************************)
 
-type instr = Push | Consti of int | Pop of int | Str of string | Bin_op of int;;
+type instr = 
+  | Halt 
+  | Push 
+  | Print
+  | Acc of int 
+  | Consti of int 
+  | Pop of int 
+  | Str of string 
+  | Bin_op of int;;
 
 
 Binop(Add,Const(Int(2)),Const(Int(1)));;
 
 (* Ne traite que les opcode des opérations binaires *)
 let string_of_opcode_binop = function
+  | 0 -> "Halt"
+  | 1 -> "Push"
+  | 2 -> "Print"
+  | 3 -> "Apply"
+  | 4 -> "Acc"
+  | 5 -> "Consti"
+  | 6 -> "Return"
+  | 7 -> "Pop"
+  | 8 -> "BranchIf"
+  | 9 -> "Branch"
+  | 10 -> "Getblock"
+  | 11 -> "Makeblock"
+  | 12 -> "Closure"
+  | 13 -> "Binop"
   | 14 -> "Str"
   | 15 -> "Add"
   | 16 -> "Sub"
@@ -38,11 +60,14 @@ let string_of_opcode_binop = function
 
 (* Affiche les chaines associées au instructions *)
 let string_of_instr : instr -> string = function
-    | Push -> "Push ;"
-    | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
-    | Consti n -> "Const "^(string_of_int n)^" ;"
-    | Pop n -> "Pop "^(string_of_int n)^" ;"
-    | Str ss -> "Str "^ss^" ;"
+  | Halt -> "Halt ;"
+  | Push -> "Push ;"
+  | Print -> "Print ;"
+  | Acc n -> "Acc "^(string_of_int n)^" ;"
+  | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
+  | Consti n -> "Const "^(string_of_int n)^" ;"
+  | Pop n -> "Pop "^(string_of_int n)^" ;"
+  | Str ss -> "Str "^ss^" ;"
 
 
 
@@ -189,6 +214,17 @@ let machine (s : mv_state) : mv_state =
     print_state s;
     begin
       match s.code.(s.pc) with
+	| Halt -> 
+	  raise Exit
+	| Print ->
+	  begin
+	    match s.acc with
+	      | PointString(a) -> print_string(a)
+	      | _ -> failwith "Print no supporté" 
+	  end
+	| Acc n -> 
+	  assert(n > 0 && n <= s.sp);
+	  s.acc <- s.stack.(s.sp - n)
 	| Consti n ->
 	  s.acc <- MotInt(n)
 	| Push ->
@@ -208,7 +244,7 @@ let machine (s : mv_state) : mv_state =
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a+b))
 		      | _ -> failwith "Addition non valide"
-		  end
+		  end  
 		| 16 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
