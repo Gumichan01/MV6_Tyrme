@@ -18,18 +18,20 @@ let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string 
 (* Instructions of the MV                                     *)
 (**************************************************************)
 
-type instr = Push | Consti of int | Pop of int | Bin_op of int;;
+type instr = Push | Consti of int | Pop of int | Str of string | Bin_op of int;;
 
 
 Binop(Add,Const(Int(2)),Const(Int(1)));;
 
 (* Ne traite que les opcode des opérations binaires *)
 let string_of_opcode_binop = function
+  | 14 -> "Str"
   | 15 -> "Add"
   | 16 -> "Sub"
   | 17 -> "Mul"
   | 18 -> "Div"
   | 19 -> "Eqi"
+  | 20 -> "Cat"
   | _ -> failwith "TODO"
 
 
@@ -40,7 +42,7 @@ let string_of_instr : instr -> string = function
     | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
     | Consti n -> "Const "^(string_of_int n)^" ;"
     | Pop n -> "Pop "^(string_of_int n)^" ;"
-
+    | Str ss -> "Str "^ss^" ;"
 
 
 
@@ -178,7 +180,7 @@ let print_state (s : mv_state) : unit =
   print_string("PC : ");
   print_int(s.pc);print_endline("");
   print_endline( string_of_instr(s.code.(s.pc)) )
-               
+ 
 
 
 (* La fonction d'execution de la machine *)
@@ -195,6 +197,8 @@ let machine (s : mv_state) : mv_state =
 	| Pop n ->
 	  assert( n <= s.sp);
 	  s.sp <- s.sp -n
+	| Str st -> 
+	  s.acc <- PointString(st)
 	| Bin_op n ->
 	  begin 
 	    (
@@ -228,6 +232,12 @@ let machine (s : mv_state) : mv_state =
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt(int_equal a b)
 		      | _ -> failwith "Egalité non valide"  
+		  end
+		| 20 ->
+		  begin
+		    match s.stack.(s.sp), s.acc with
+		      | PointString(a),PointString(b) -> s.acc <- PointString(b^a)
+		      | _ -> failwith "Concatenation non valide"  
 		  end
 		| _ -> 
 		  failwith "Ce binop n'est pas supporte"
@@ -319,6 +329,7 @@ let ex_instru2 = [|Consti 3; Push; Consti 2; Bin_op 16;|];;
 let ex_instru3 = [|Consti 3; Push; Consti 2; Bin_op 17;|];;
 let ex_instru4 = [|Consti 24; Push; Consti 6; Bin_op 18;|];;
 let ex_instru5 = [|Consti 0; Push; Consti 0; Bin_op 19;|];;
+let ex_instru6 = [|Str "B\n"; Push; Str "A"; Bin_op 20;|];;
 
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
 print_endline("");;
@@ -335,7 +346,8 @@ print_endline("");;
 print_string("\nResultat V eqi ->  "^string_of_mot(eval ex_instru5)^"\n\n");;
 print_endline("");;
 
-
+print_string("\nResultat VI cat ->  "^string_of_mot(eval ex_instru6)^"\n\n");;
+print_endline("");;
 
 
 
