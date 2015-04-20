@@ -160,9 +160,9 @@ let disassemble_filename (name : string) : instr list =
 
 
 let rec string_of_mot : mot -> string = function
-  | MotInt n -> string_of_int n^" ; "
-  | PointString s -> s^" ;"
-  | PointBloc(t,bloc) -> "["^(string_of_tag t)^(list_to_string bloc)^"]"
+  | MotInt n -> string_of_int n^" "
+  | PointString s -> s^" "
+  | PointBloc(t,bloc) -> "["^(string_of_tag t)^(list_to_string bloc)^"] "
 and list_to_string (li : mot list) : string =
   let rec list_to_str_rec (l : mot list) (res : string) : string =
     match l with
@@ -409,7 +409,9 @@ let ex_compil () =
 
 
 
-(** TEST *)
+(** ****** ** 
+     TEST 
+ ** ****** **)
 
 (* addition *)
 let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15|];;
@@ -425,7 +427,9 @@ let ex_instru10 = [|Str "str"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 
 
 let ex_instru11 = [|Consti 1; Push; Consti 0; BranchIf 3; Consti 5; Branch 2;Consti 24; Pop 1|];;
 
+let ex_instru12 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock((Tab 0),3); Push; Str "Paris 7"; Push; Makeblock((Tab 0),2)|];;
 
+(*
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
 print_endline("");;
 
@@ -462,4 +466,8 @@ print_endline("");;
 
 
 print_string("\nResultat XI BranchIf + Branch  ->  "^string_of_mot(eval ex_instru11)^"\n\n");;
+print_endline("");;*)
+
+
+print_string("\nResultat XII MakeBlock  ->  "^string_of_mot(eval ex_instru12)^"\n\n");;
 print_endline("");;
