@@ -25,11 +25,12 @@ type instr =
   | Acc of int 
   | Consti of int 
   | Pop of int 
+  | BranchIf of int
+  | Branch of int
   | Str of string 
   | Bin_op of int;;
 
 
-Binop(Add,Const(Int(2)),Const(Int(1)));;
 
 (* Ne traite que les opcode des opérations binaires *)
 let string_of_opcode_binop = function
@@ -67,6 +68,8 @@ let string_of_instr : instr -> string = function
   | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
   | Consti n -> "Const "^(string_of_int n)^" ;"
   | Pop n -> "Pop "^(string_of_int n)^" ;"
+  | BranchIf n -> "BranchIf "^(string_of_int n)^" ;"
+  | Branch n -> "Branch "^(string_of_int n)^" ;"
   | Str ss -> "Str "^ss^" ;"
 
 
@@ -233,6 +236,16 @@ let machine (s : mv_state) : mv_state =
 	| Pop n ->
 	  assert( n <= (s.sp + 1) );
 	  s.sp <- s.sp -n
+	| BranchIf n -> 
+	  assert( ((s.pc + (n-1) ) > 0) && ((s.pc + (n-1) ) < Array.length s.code) );
+	  begin
+	    match s.acc with
+	      | MotInt(i) -> s.pc <- s.pc + (if (i = 0) then n - 1  else 0 )
+	      | _ -> failwith "Branchement non valide\n"
+	  end
+	| Branch n ->
+	  assert( (s.pc + n) > 0 && (s.pc + n) < Array.length s.code );
+	  s.pc <- s.pc + n -1 
 	| Str st -> 
 	  s.acc <- PointString(st)
 	| Bin_op n ->
@@ -371,6 +384,7 @@ let ex_instru8 = [|Str "HALT\n"; Halt; Consti 2|];;
 let ex_instru9 = [|Str "STRING ATTENDUE\n"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 3|];;
 let ex_instru10 = [|Str "str"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 2; Str "cat\n"; Bin_op 20|];;
 
+let ex_instru11 = [|Consti 1; Push; Consti 0; BranchIf 3; Consti 5; Branch 2;Consti 24; Pop 1|];;
 
 
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
@@ -405,4 +419,8 @@ print_string("\nResultat IX Add + Pop ->  "^string_of_mot(eval ex_instru9)^"\n\n
 print_endline("");;
 
 print_string("\nResultat X Add + Pop + cat ->  "^string_of_mot(eval ex_instru10)^"\n\n");;
+print_endline("");;
+
+
+print_string("\nResultat XI BranchIf + Branch  ->  "^string_of_mot(eval ex_instru11)^"\n\n");;
 print_endline("");;
