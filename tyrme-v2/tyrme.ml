@@ -18,6 +18,16 @@ let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string 
 (* Instructions of the MV                                     *)
 (*********************************)
 
+(** Types tag et mot **)
+type tag = Float of int | String of int | Fun of int | Tab of int;;
+
+type mot = 
+  | MotInt of int
+  | PointString of string
+  | PointBloc of (tag * (mot list))
+
+
+
 type instr = 
   | Halt 
   | Push 
@@ -27,9 +37,17 @@ type instr =
   | Pop of int 
   | BranchIf of int
   | Branch of int
+  | Makeblock of tag * int
   | Str of string 
   | Bin_op of int;;
 
+
+
+let string_of_tag = function
+  | Float n -> "=(Tag) Float= "^(string_of_int n)^" ; "
+  | String n -> "=(Tag) String= "^(string_of_int n)^" ; "
+  | Fun n -> "=[Tag] Fonction= "^(string_of_int n)^" ; "
+  | Tab n -> "=[Tag] Tableau/n-uplet= "^(string_of_int n)^" ; "
 
 
 (* Ne traite que les opcode des opérations binaires *)
@@ -70,6 +88,7 @@ let string_of_instr : instr -> string = function
   | Pop n -> "Pop "^(string_of_int n)^" ;"
   | BranchIf n -> "BranchIf "^(string_of_int n)^" ;"
   | Branch n -> "Branch "^(string_of_int n)^" ;"
+  | Makeblock(_,_) -> "Makeblock TAG * MOT LIST ;"
   | Str ss -> "Str "^ss^" ;"
 
 
@@ -102,8 +121,6 @@ let assemble_filename (name : string) (is : instr list) : unit =
     assemble buf is;
     close_out buf
   end
-
-
 
 
 
@@ -141,21 +158,21 @@ let disassemble_filename (name : string) : instr list =
 (* Machine virtuelle                                          *)
 (**************************************************************)
 
-type tag = UNE_DEFINITION_DU_TAG_PAR_EXEMPLE_CHAR_OU_INT
-
-type mot = 
-  | MotInt of int
-  | PointString of string
-  | PointBloc of (tag * (mot list))
-
 
 let rec string_of_mot : mot -> string = function
-  | MotInt n -> string_of_int n
-  | PointString s -> s
-  | _ -> failwith "mot non traite"
+  | MotInt n -> string_of_int n^" ; "
+  | PointString s -> s^" ;"
+  | PointBloc(t,bloc) -> "["^(string_of_tag t)^(list_to_string bloc)^"]"
+and list_to_string (li : mot list) : string =
+  let rec list_to_str_rec (l : mot list) (res : string) : string =
+    match l with
+      | [] -> res
+      | t::q -> list_to_str_rec q (res^(string_of_mot t))
+  in list_to_str_rec li "" ;;
 
+string_of_mot (PointBloc(Tab 0,[MotInt 5;PointString "toto"; PointBloc(Tab 0, [MotInt 0; MotInt 1])]));;
 
-
+string_of_mot (PointBloc(Tab 0,[MotInt 1]));;
 
 let int_equal (x : int) (y : int ) : int =
   if(x = y) then 1 else 0;;
@@ -203,7 +220,26 @@ let print_stack st sp =
 
 
 
-(*  *)
+
+let make_block (n : int) (pile : mot array) (taille : int) : mot list =
+   assert( n >= 0 && n <= taille);
+  let rec make_block_rec (m : int) (p : mot array) (t : int) 
+      (ac : int) (li : mot list ) : mot list =
+    begin
+    if(ac = taille)
+    then
+      li
+    else
+      make_block_rec m p t (ac+1) (p.(taille - ac - 1)::li)
+    end
+  in make_block_rec n pile taille 0 [];;
+
+
+(** Tester make_block **)
+(*make_block 4 [|MotInt 2; MotInt 18; MotInt 3; MotInt 21; MotInt 1024|] 4;;*)
+
+
+(* Afficher l'état de la pile *)
 let print_state (s : mv_state) : unit =
   print_string("PC : ");
   print_int(s.pc);print_endline("");
@@ -246,6 +282,9 @@ let machine (s : mv_state) : mv_state =
 	| Branch n ->
 	  assert( (s.pc + n) > 0 && (s.pc + n) < Array.length s.code );
 	  s.pc <- s.pc + n -1 
+	| Makeblock(t,n) ->
+	  s.acc <- (PointBloc(t,(make_block n s.stack (s.sp + 1) )));
+	  s.sp <- s.sp - n
 	| Str st -> 
 	  s.acc <- PointString(st)
 	| Bin_op n ->
