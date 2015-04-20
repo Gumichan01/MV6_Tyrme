@@ -231,7 +231,7 @@ let machine (s : mv_state) : mv_state =
 	  s.sp <- s.sp + 1;
 	  s.stack.(s.sp) <- s.acc
 	| Pop n ->
-	  assert( n <= s.sp);
+	  assert( n <= (s.sp + 1) );
 	  s.sp <- s.sp -n
 	| Str st -> 
 	  s.acc <- PointString(st)
@@ -272,7 +272,7 @@ let machine (s : mv_state) : mv_state =
 		| 20 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
-		      | PointString(a),PointString(b) -> s.acc <- PointString(b^a)
+		      | PointString(a),PointString(b) -> s.acc <- PointString(a^b)
 		      | _ -> failwith "Concatenation non valide"  
 		  end
 		| _ -> 
@@ -360,12 +360,18 @@ let ex_compil () =
 (** TEST *)
 
 (* addition *)
-let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15;|];;
-let ex_instru2 = [|Consti 3; Push; Consti 2; Bin_op 16;|];;
-let ex_instru3 = [|Consti 3; Push; Consti 2; Bin_op 17;|];;
-let ex_instru4 = [|Consti 24; Push; Consti 6; Bin_op 18;|];;
-let ex_instru5 = [|Consti 0; Push; Consti 0; Bin_op 19;|];;
-let ex_instru6 = [|Str "B\n"; Push; Str "A"; Bin_op 20;|];;
+let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15|];;
+let ex_instru2 = [|Consti 3; Push; Consti 2; Bin_op 16|];;
+let ex_instru3 = [|Consti 3; Push; Consti 2; Bin_op 17|];;
+let ex_instru4 = [|Consti 24; Push; Consti 6; Bin_op 18|];;
+let ex_instru5 = [|Consti 0; Push; Consti 0; Bin_op 19|];;
+let ex_instru6 = [|Str "B\n"; Push; Str "A"; Bin_op 20|];;
+let ex_instru7 = [|Str "Alpha\n"; Print|];;
+let ex_instru8 = [|Str "HALT\n"; Halt; Consti 2|];;
+let ex_instru9 = [|Str "STRING ATTENDUE\n"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 3|];;
+let ex_instru10 = [|Str "str"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 2; Str "cat\n"; Bin_op 20|];;
+
+
 
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
 print_endline("");;
@@ -385,6 +391,18 @@ print_endline("");;
 print_string("\nResultat VI cat ->  "^string_of_mot(eval ex_instru6)^"\n\n");;
 print_endline("");;
 
+print_string("\nResultat VII Str ->  "^string_of_mot(eval ex_instru7)^"\n\n");;
+
+try 
+  begin
+    print_string("\nResultat VIII Halt ->  "^string_of_mot(eval ex_instru8)^"\n\n");
+    print_endline("");
+  end
+with Exit -> print_string("OK halt\n");;
 
 
+print_string("\nResultat IX Add + Pop ->  "^string_of_mot(eval ex_instru9)^"\n\n");;
+print_endline("");;
 
+print_string("\nResultat X Add + Pop + cat ->  "^string_of_mot(eval ex_instru10)^"\n\n");;
+print_endline("");;
