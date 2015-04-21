@@ -8,7 +8,6 @@ open Ast
 
 
 
-
 (* fonction de parsing: prends une expression de Tyrme et retourne
    l'arbre syntactique *)
 let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string s)
@@ -246,7 +245,8 @@ let machine (s : mv_state) : mv_state =
     print_state s;
     begin
       match s.code.(s.pc) with
-	| Halt -> 
+	| Halt ->
+	  s.sp <- -1;
 	  raise Exit
 	| Print ->
 	  begin
@@ -329,7 +329,7 @@ let machine (s : mv_state) : mv_state =
     print_string("ACC : ");print_string(string_of_mot(s.acc) );print_endline("");
     print_string("STACK : ");print_stack s.stack s.sp; print_endline("\n");
     s.pc <- s.pc + 1;
-  done; s
+  done; s;;
 
 
 
@@ -371,35 +371,51 @@ let envsucc e = List.map succ e
 
 
 
-(* Convertit un binop  en opcode *)
-let opcode i = match i with
-  | Add -> 13
+(* Convertit un binop en opcode *)
+let opcode (i : Ast.binop) = match i with
+  | Add -> 15
+  | Sub -> 16
+  | Mult -> 17
+  | Div -> 18
+  | Eq -> 19
+  | Cat -> 20
   | _ -> failwith "pas traite"
 
 
 
 (* La fonction de compilation *)
-let rec compil : env * expr -> instr list = function
+let rec compil : env * Ast.expr -> instr list = function
+  | _,Var s -> [Str s]
   | _,Const v -> [Consti (repr v)]
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
     compil ((envsucc env),e2) @
     [Bin_op (opcode o); Pop 1]
-  | _,_ -> failwith "pas encore exp"
+  | _,_ -> failwith "pas encore exp";;
+
+compil (empty_env,(Ast.Binop(Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
+compil (empty_env,(Ast.Binop(Ast.Sub,Ast.Const(Int(8)),Ast.Const(Int(6)))));;
+compil (empty_env,(Ast.Binop(Ast.Mult,Ast.Const(Int(6)),Ast.Const(Int(4)))));;
+compil (empty_env,(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
+compil (empty_env, (Ast.Binop(Ast.Cat,Ast.Var("hello "),Ast.Var(" world!"))));;
+
 
 (* Pour lire le codex *)
 let lire_codex () = 
   print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))))
                
-               
+
+           
 (* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
 let ex_compil () =
   print_string (string_of_mot 
 		  (eval 
-		     (Array.of_list(compil(empty_env, parse "let x = 1 in x + 2")))
+		     (Array.of_list(compil(empty_env, parse "let x = 1 in x + 2 ;;")))
 		  )
-  )
+  );;
 
+
+ex_compil;;
 
 
 (** ****** ** 
@@ -459,8 +475,8 @@ print_endline("");;
 
 
 print_string("\nResultat XI BranchIf + Branch  ->  "^string_of_mot(eval ex_instru11)^"\n\n");;
-print_endline("");;*)
+print_endline("");;
 
 
 print_string("\nResultat XII MakeBlock  ->  "^string_of_mot(eval ex_instru12)^"\n\n");;
-print_endline("");;
+print_endline("");;*)
