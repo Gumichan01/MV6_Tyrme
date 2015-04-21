@@ -19,7 +19,7 @@ let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string 
 (*********************************)
 
 (** Types tag et mot **)
-type tag = Float of int | String of int | Fun of int | Tab of int;;
+type tag = int;;
 
 type mot = 
   | MotInt of int
@@ -41,13 +41,6 @@ type instr =
   | Str of string 
   | Bin_op of int;;
 
-
-
-let string_of_tag = function
-  | Float n -> "=(Tag) Float= "^(string_of_int n)^" ; "
-  | String n -> "=(Tag) String= "^(string_of_int n)^" ; "
-  | Fun n -> "=[Tag] Fonction= "^(string_of_int n)^" ; "
-  | Tab n -> "=[Tag] Tableau/n-uplet= "^(string_of_int n)^" ; "
 
 
 (* Ne traite que les opcode des opérations binaires *)
@@ -162,7 +155,7 @@ let disassemble_filename (name : string) : instr list =
 let rec string_of_mot : mot -> string = function
   | MotInt n -> string_of_int n^" "
   | PointString s -> s^" "
-  | PointBloc(t,bloc) -> "["^(string_of_tag t)^(list_to_string bloc)^"] "
+  | PointBloc(t,bloc) -> "[ TAG "^(string_of_int t)^" : "^(list_to_string bloc)^"] "
 and list_to_string (li : mot list) : string =
   let rec list_to_str_rec (l : mot list) (res : string) : string =
     match l with
@@ -170,9 +163,9 @@ and list_to_string (li : mot list) : string =
       | t::q -> list_to_str_rec q (res^(string_of_mot t))
   in list_to_str_rec li "" ;;
 
-string_of_mot (PointBloc(Tab 0,[MotInt 5;PointString "toto"; PointBloc(Tab 0, [MotInt 0; MotInt 1])]));;
+string_of_mot (PointBloc(0,[MotInt 5;PointString "toto"; PointBloc(0, [MotInt 0; MotInt 1])]));;
 
-string_of_mot (PointBloc(Tab 0,[MotInt 1]));;
+string_of_mot (PointBloc(0,[MotInt 1]));;
 
 let int_equal (x : int) (y : int ) : int =
   if(x = y) then 1 else 0;;
@@ -427,7 +420,7 @@ let ex_instru10 = [|Str "str"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 
 
 let ex_instru11 = [|Consti 1; Push; Consti 0; BranchIf 3; Consti 5; Branch 2;Consti 24; Pop 1|];;
 
-let ex_instru12 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock((Tab 0),3); Push; Str "Paris 7"; Push; Makeblock((Tab 0),2)|];;
+let ex_instru12 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); Push; Str "Paris 7"; Push; Makeblock(0,2)|];;
 
 (*
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
