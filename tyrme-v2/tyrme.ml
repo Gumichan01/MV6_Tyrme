@@ -255,7 +255,7 @@ let machine (s : mv_state) : mv_state =
 	      | _ -> failwith "Print no supporté" 
 	  end
 	| Acc n -> 
-	  assert(n > 0 && n <= s.sp);
+	  assert(n >= 0 && n <= s.sp);
 	  s.acc <- s.stack.(s.sp - n)
 	| Consti n ->
 	  s.acc <- MotInt(n)
@@ -385,8 +385,13 @@ let opcode (i : Ast.binop) = match i with
 
 (* La fonction de compilation *)
 let rec compil : env * Ast.expr -> instr list = function
-  | _,Var s -> [Str s]
-  | _,Const v -> [Consti (repr v)]
+  | env,Var s -> [Acc (List.assoc s env)]
+  | _,Const v -> 
+    begin 
+      match v with
+	| String s -> [Str s]
+	| _ -> [Consti (repr v)]
+    end
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
     compil ((envsucc env),e2) @
@@ -398,8 +403,9 @@ let rec compil : env * Ast.expr -> instr list = function
 			     i2 @
 			     [Branch (1 + List.length i1)] @
 			     i1
-
-  | _,_ -> failwith "pas encore exp";;
+  | env, Let(s,e1,e2) -> let new_env = (s,0)::(List.map succ env)
+			 in compil (env,e1) @ [Push] @ compil (new_env,e2) @ [Pop 1]
+  | _,_ -> failwith "TODO";;
 
 
 
@@ -408,10 +414,25 @@ compil (empty_env,(Ast.Binop(Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
 compil (empty_env,(Ast.Binop(Ast.Sub,Ast.Const(Int(8)),Ast.Const(Int(6)))));;
 compil (empty_env,(Ast.Binop(Ast.Mult,Ast.Const(Int(6)),Ast.Const(Int(4)))));;
 compil (empty_env,(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
-compil (empty_env, (Ast.Binop(Ast.Cat,Ast.Var("hello "),Ast.Var(" world!"))));;
+
+compil (empty_env, (Ast.Binop(Ast.Cat,
+			      Ast.Const(Ast.String("hello ")),
+			      Ast.Const(String(" world!")))));;
+
 compil (empty_env, Ast.If(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),
 				    Ast.Const(Int(0))),
 				    Ast.Const(Int(5)),Ast.Const(Int(24))));;
+
+compil(empty_env,Let("x",
+	   Const(Int(1)),
+	   Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;
+
+compil(empty_env,Let("x",
+		     Ast.If(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),
+				      Ast.Const(Int(0))),
+			    Ast.Const(Int(5)),Ast.Const(Int(24))),
+		     Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;
+
 
 (* Pour lire le codex *)
 let lire_codex () = 
@@ -454,7 +475,14 @@ let ex_instru11bis = [|Consti 1; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 2
 
 let ex_instru12 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); Push; Str "Paris 7"; Push; Makeblock(0,2)|];;
 
+let ex_instru13 = [|Consti 1; Push; Consti 3; Push; Acc 1; Bin_op 15; Pop 1|];;
 
+let ex_instru14 = [|Consti 0; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; Branch 2;
+ Consti 5; Push; Acc 0; Push; Consti 3; Bin_op 15; Pop 1|];;
+
+
+
+(*
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
 print_endline("");;
 
@@ -497,4 +525,10 @@ print_string("\nResultat XI BIS Branch  ->  "^string_of_mot(eval ex_instru11bis)
 print_endline("");;
 
 print_string("\nResultat XII MakeBlock  ->  "^string_of_mot(eval ex_instru12)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat XIII MakeBlock  ->  "^string_of_mot(eval ex_instru13)^"\n\n");;
+print_endline("");;*)
+
+print_string("\nResultat XIV MakeBlock  ->  "^string_of_mot(eval ex_instru14)^"\n\n");;
 print_endline("");;
