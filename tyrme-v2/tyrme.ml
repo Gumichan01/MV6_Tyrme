@@ -15,7 +15,7 @@ let parse (s : string) : Ast.expr = Parser.main Lexer.token (Lexing.from_string 
 
 (**************************************************************)
 (* Instructions of the MV                                     *)
-(*********************************)
+(**************************************************************)
 
 (** Types tag et mot **)
 type tag = int;;
@@ -390,15 +390,28 @@ let rec compil : env * Ast.expr -> instr list = function
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
     compil ((envsucc env),e2) @
-    [Bin_op (opcode o); Pop 1]
+    [Bin_op (opcode o)]
+  | env, If(cond,e1,e2) -> let i1 = compil(env,e1) in
+			   let i2 = compil(env,e2) in
+			   compil (env,cond) @
+			     [ BranchIf(2 + List.length i2) ]@
+			     i2 @
+			     [Branch (1 + List.length i1)] @
+			     i1
+
   | _,_ -> failwith "pas encore exp";;
+
+
+
 
 compil (empty_env,(Ast.Binop(Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
 compil (empty_env,(Ast.Binop(Ast.Sub,Ast.Const(Int(8)),Ast.Const(Int(6)))));;
 compil (empty_env,(Ast.Binop(Ast.Mult,Ast.Const(Int(6)),Ast.Const(Int(4)))));;
 compil (empty_env,(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
 compil (empty_env, (Ast.Binop(Ast.Cat,Ast.Var("hello "),Ast.Var(" world!"))));;
-
+compil (empty_env, Ast.If(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),
+				    Ast.Const(Int(0))),
+				    Ast.Const(Int(5)),Ast.Const(Int(24))));;
 
 (* Pour lire le codex *)
 let lire_codex () = 
@@ -436,9 +449,12 @@ let ex_instru10 = [|Str "str"; Push; Consti 2; Push ; Consti 1; Push; Acc 2;Pop 
 
 let ex_instru11 = [|Consti 1; Push; Consti 0; BranchIf 3; Consti 5; Branch 2;Consti 24; Pop 1|];;
 
+let ex_instru11bis = [|Consti 1; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; Branch 2;
+ Consti 5|];;
+
 let ex_instru12 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); Push; Str "Paris 7"; Push; Makeblock(0,2)|];;
 
-(*
+
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
 print_endline("");;
 
@@ -477,6 +493,8 @@ print_endline("");;
 print_string("\nResultat XI BranchIf + Branch  ->  "^string_of_mot(eval ex_instru11)^"\n\n");;
 print_endline("");;
 
+print_string("\nResultat XI BIS Branch  ->  "^string_of_mot(eval ex_instru11bis)^"\n\n");;
+print_endline("");;
 
 print_string("\nResultat XII MakeBlock  ->  "^string_of_mot(eval ex_instru12)^"\n\n");;
-print_endline("");;*)
+print_endline("");;
