@@ -562,8 +562,15 @@ let ex_instru14 = [|Consti 0; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; 
 
 let ex_instru15 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); GetBlock 2|];;
 
-let ex_instru16 = [|Consti 1; Push; Consti 2; Bin_op 15; Return 1; Closure(0,-6); Push;
-		    Consti (-1); Push; Acc 1; Apply; Push; Consti 9; Bin_op 17|];;
+
+let ex_instru16 = [|Branch 6;Acc 0; Push; Consti 2; Bin_op 15; Return 1; Closure(0,-6);
+		    Push; Consti 2; Push; Acc 1; Apply; Pop 1; Push; Consti 9; Bin_op 17|];;
+
+
+let ex_instru17 = [|Branch 17;
+		    Branch 6;Acc 0; Push; Consti 2; Bin_op 15; Return 1; Closure(0,-6);
+		    Push; Consti (-1); Push; Acc 1; Apply; Pop 1; Push; Consti 9; Bin_op 17; Return 1;
+		    Closure(0,-17); Push; Consti (-1); Push; Acc 1; Apply; Pop 1|];;
 
 
 (*
@@ -621,6 +628,9 @@ print_endline("");;
 print_string("\nResultat XV MakeBlock  ->  "^string_of_mot(eval ex_instru15)^"\n\n");;
 print_endline("");;*)
 
-
+(*
 print_string("\nResultat XVI MakeBlock  ->  "^string_of_mot(eval ex_instru16)^"\n\n");;
+print_endline("");;*)
+
+print_string("\nResultat XVII MakeBlock  ->  "^string_of_mot(eval ex_instru17)^"\n\n");;
 print_endline("");;
