@@ -31,8 +31,10 @@ type instr =
   | Halt 
   | Push 
   | Print
+  | Apply
   | Acc of int 
   | Consti of int 
+  | Return of int
   | Pop of int 
   | BranchIf of int
   | Branch of int
@@ -76,9 +78,11 @@ let string_of_instr : instr -> string = function
   | Halt -> "Halt ;"
   | Push -> "Push ;"
   | Print -> "Print ;"
+  | Apply -> "Apply ;"
   | Acc n -> "Acc "^(string_of_int n)^" ;"
   | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
   | Consti n -> "Const "^(string_of_int n)^" ;"
+  | Return n -> "Return "^(string_of_int n)^" ;"
   | Pop n -> "Pop "^(string_of_int n)^" ;"
   | BranchIf n -> "BranchIf "^(string_of_int n)^" ;"
   | Branch n -> "Branch "^(string_of_int n)^" ;"
@@ -166,9 +170,10 @@ and list_to_string (li : mot list) : string =
       | t::q -> list_to_str_rec q (res^(string_of_mot t))
   in list_to_str_rec li "" ;;
 
-string_of_mot (PointBloc(0,[MotInt 5;PointString "toto"; PointBloc(0, [MotInt 0; MotInt 1])]));;
 
+string_of_mot (PointBloc(0,[MotInt 5;PointString "toto"; PointBloc(0, [MotInt 0; MotInt 1])]));;
 string_of_mot (PointBloc(0,[MotInt 1]));;
+
 
 let int_equal (x : int) (y : int ) : int =
   if(x = y) then 1 else 0;;
@@ -186,7 +191,6 @@ type mv_state = {
 
 (* retourne l'accumulateur de l'etat donne en argument *)
 let get_acc (s : mv_state) : mot = s.acc
-(*let get_acc (s : mv_state) : int = s.acc*)
 
 
 
@@ -239,9 +243,23 @@ let make_block (n : int) (pile : mot array) (taille : int) : mot list =
 let print_state (s : mv_state) : unit =
   print_string("PC : ");
   print_int(s.pc);print_endline("");
-  print_endline( string_of_instr(s.code.(s.pc)) )
+  print_endline( string_of_instr(s.code.(s.pc)) );;
  
 
+let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
+  let ar = Array.of_list li in
+  begin
+    let it = ref ((Array.length ar) - 1) and st = ref sp in
+    begin
+      while( !it > 0 )
+      do
+	stack.(!st) <- ar.(!it);
+	st := !st + 1;
+	it := !it - 1
+      done; !st
+    end
+  end;;
+  
 
 (* La fonction d'execution de la machine *)
 let machine (s : mv_state) : mv_state =
@@ -256,19 +274,64 @@ let machine (s : mv_state) : mv_state =
 	  begin
 	    match s.acc with
 	      | PointString(a) -> print_string(a)
-	      | _ -> failwith "Print no supporté" 
+	      | _ -> failwith "Print non supporté"
+	  end
+	| Apply ->
+	  begin
+	    let sav = s.stack.(s.sp) in
+	    begin
+	      s.stack.(s.sp) <- MotInt(s.pc);
+	      begin
+		match s.acc with
+		  | PointBloc(a,b) ->
+		    begin
+		      if(a == 88)
+		      then  
+			begin
+			  s.sp <- s.sp + 1;
+			  s.sp <- writeStack b s.stack s.sp;
+			  s.stack.(s.sp) <- sav;
+			  s.pc <- match List.hd b with
+			    | MotInt i -> i
+			    | _ -> failwith "erreur apply"
+			end
+		      else
+			failwith ("Mauvais TAG")
+		    end
+		  | _ -> failwith "Mauvais appel"
+	      end
+	    end
 	  end
 	| Acc n -> 
-	  assert(n >= 0 && n <= s.sp);
-	  s.acc <- s.stack.(s.sp - n)
+	  begin
+	    assert(n >= 0 && n <= s.sp);
+	    s.acc <- s.stack.(s.sp - n)
+	  end
 	| Consti n ->
 	  s.acc <- MotInt(n)
+	| Return n ->
+	  assert( n >= 0);
+	  if(n < s.sp +1 )
+	  then
+	    begin
+	      s.sp <- s.sp - n;
+	      print_string("SP : "^string_of_int s.sp^" I\n");
+	      if( s.sp >= 0 )
+	      then
+		begin
+		  match s.stack.(s.sp) with
+		    | MotInt(v) -> s.pc <- v; s.sp <- s.sp - 1
+		    | _ -> failwith "PC non valide"
+		end
+	      else ()
+	    end
+	  else ()
 	| Push ->
 	  s.sp <- s.sp + 1;
 	  s.stack.(s.sp) <- s.acc
 	| Pop n ->
 	  assert( n <= (s.sp + 1) );
-	  s.sp <- s.sp -n
+	  s.sp <- s.sp - n
 	| BranchIf n -> 
 	  assert( ((s.pc + (n-1) ) > 0) && ((s.pc + (n-1) ) < Array.length s.code) );
 	  begin
@@ -293,7 +356,7 @@ let machine (s : mv_state) : mv_state =
 	  s.acc <- (PointBloc(t,(make_block n s.stack (s.sp + 1) )));
 	  s.sp <- s.sp - n
 	| Closure(n,o) ->
-	  s.acc <- (PointBloc(88, [MotInt(s.pc+o)]@(make_block (n) s.stack (s.sp + 1) ))); (* DEBUG *)
+	  s.acc <- (PointBloc(88, [MotInt(s.pc+o)]@(make_block (n) s.stack (s.sp + 1) )));
 	| Str st -> 
 	  s.acc <- PointString(st)
 	| Bin_op n ->
@@ -375,6 +438,7 @@ let repr = function
   | Int i      -> i
   | Bool true  -> 1
   | Bool false -> 0
+  | Unit -> 0
   | _ -> failwith "repr non supporte"
 
 (* Incrémente la position d'une variable dans la pile *)
@@ -498,7 +562,8 @@ let ex_instru14 = [|Consti 0; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; 
 
 let ex_instru15 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); GetBlock 2|];;
 
-let ex_instru16 = [|Consti 1; Push; Consti 2; Bin_op 15; Closure(0,-4)|];;
+let ex_instru16 = [|Consti 1; Push; Consti 2; Bin_op 15; Return 1; Closure(0,-6); Push;
+		    Consti (-1); Push; Acc 1; Apply; Push; Consti 9; Bin_op 17|];;
 
 
 (*
