@@ -36,7 +36,9 @@ type instr =
   | Pop of int 
   | BranchIf of int
   | Branch of int
+  | GetBlock of int
   | Makeblock of tag * int
+  | Closure of int * int
   | Str of string 
   | Bin_op of int;;
 
@@ -80,7 +82,9 @@ let string_of_instr : instr -> string = function
   | Pop n -> "Pop "^(string_of_int n)^" ;"
   | BranchIf n -> "BranchIf "^(string_of_int n)^" ;"
   | Branch n -> "Branch "^(string_of_int n)^" ;"
+  | GetBlock n -> "GetBlock "^(string_of_int n)^" ;"
   | Makeblock(_,_) -> "Makeblock TAG * MOT LIST ;"
+  | Closure(_,_) -> "Closure INT * INT;"
   | Str ss -> "Str "^ss^" ;"
 
 
@@ -275,9 +279,21 @@ let machine (s : mv_state) : mv_state =
 	| Branch n ->
 	  assert( (s.pc + n) > 0 && (s.pc + n) < Array.length s.code );
 	  s.pc <- s.pc + n -1 
+	| GetBlock n -> assert( n >= 0);
+	  begin
+	    match s.acc with
+	      | PointBloc(_,l) -> 
+		begin 
+		  assert(n < List.length l);
+		  s.acc <- ((Array.of_list l).(n))
+		end
+	      | _ -> failwith("GetBlock s'applique sur un type non reconnu")
+	  end
 	| Makeblock(t,n) ->
 	  s.acc <- (PointBloc(t,(make_block n s.stack (s.sp + 1) )));
 	  s.sp <- s.sp - n
+	| Closure(n,o) ->
+	  s.acc <- (PointBloc(88, [MotInt(s.pc+o)]@(make_block (n) s.stack (s.sp + 1) ))); (* DEBUG *)
 	| Str st -> 
 	  s.acc <- PointString(st)
 	| Bin_op n ->
@@ -480,6 +496,9 @@ let ex_instru13 = [|Consti 1; Push; Consti 3; Push; Acc 1; Bin_op 15; Pop 1|];;
 let ex_instru14 = [|Consti 0; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; Branch 2;
  Consti 5; Push; Acc 0; Push; Consti 3; Bin_op 15; Pop 1|];;
 
+let ex_instru15 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); GetBlock 2|];;
+
+let ex_instru16 = [|Consti 1; Push; Consti 2; Bin_op 15; Closure(0,-4)|];;
 
 
 (*
@@ -528,7 +547,15 @@ print_string("\nResultat XII MakeBlock  ->  "^string_of_mot(eval ex_instru12)^"\
 print_endline("");;
 
 print_string("\nResultat XIII MakeBlock  ->  "^string_of_mot(eval ex_instru13)^"\n\n");;
-print_endline("");;*)
+print_endline("");;
 
 print_string("\nResultat XIV MakeBlock  ->  "^string_of_mot(eval ex_instru14)^"\n\n");;
+print_endline("");;
+
+
+print_string("\nResultat XV MakeBlock  ->  "^string_of_mot(eval ex_instru15)^"\n\n");;
+print_endline("");;*)
+
+
+print_string("\nResultat XVI MakeBlock  ->  "^string_of_mot(eval ex_instru16)^"\n\n");;
 print_endline("");;
