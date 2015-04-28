@@ -110,6 +110,7 @@ let in_i32  (buf : in_channel) : int = input_binary_int buf
 let assemble_instr (buf : out_channel) : instr -> unit = function
   | Consti n -> out_i8 buf 5; out_i32 buf n
   | Push -> out_i8 buf 1
+  | Pop n  -> out_i8 buf 7; out_i32 buf n
   | _ -> failwith "Pas de support de l'instruction disponible"
 ;;
 
@@ -133,7 +134,7 @@ let assemble_filename (name : string) (is : instr list) : unit =
 
 
 assemble_filename "RESULT.txt" [Consti 1] ;;
-assemble_filename "RESULT.txt" [Consti 1; Push] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push; Pop 1] ;;
 assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 15] ;;
 assemble_filename "RESULT.txt" [Consti 8; Push; Consti 6; Bin_op 16] ;;
 assemble_filename "RESULT.txt" [Consti 6; Push; Consti 4; Bin_op 17] ;;
@@ -151,6 +152,7 @@ let rec disassemble (buf : in_channel) : instr list =
     match c with
       | 1 -> (disassemble buf)@[Push]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
+      | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
       | _ -> failwith "a vous de continuer"
 ;;
      (*
@@ -166,7 +168,7 @@ let rec disassemble (buf : in_channel) : instr list =
 (* Ecrite pour vous: une fonction de desassemblage qui lit d'un fichier *)
 let disassemble_filename (name : string) : instr list = 
   let buf = open_in_bin name in
-  let insts = disassemble buf in
+  let insts = List.rev(disassemble buf) in
   let _ = close_in buf in
   insts;;
 
