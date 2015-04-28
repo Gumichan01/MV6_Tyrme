@@ -109,6 +109,7 @@ let in_i32  (buf : in_channel) : int = input_binary_int buf
 (* Fonction d'assemblage d'instruction *)
 let assemble_instr (buf : out_channel) : instr -> unit = function
   | Consti n -> out_i8 buf 5; out_i32 buf n
+  | Push -> out_i8 buf 1
   | _ -> failwith "Pas de support de l'instruction disponible"
 ;;
 
@@ -148,6 +149,7 @@ let rec disassemble (buf : in_channel) : instr list =
   | None   -> []  (* Nope: end of the file *)
   | Some c ->     (* Yep ! Carry on *)
     match c with
+      | 1 -> (disassemble buf)@[Push]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
       | _ -> failwith "a vous de continuer"
 ;;
