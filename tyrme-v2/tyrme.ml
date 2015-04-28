@@ -111,6 +111,7 @@ let assemble_instr (buf : out_channel) : instr -> unit = function
   | Consti n -> out_i8 buf 5; out_i32 buf n
   | Push -> out_i8 buf 1
   | Pop n  -> out_i8 buf 7; out_i32 buf n
+  | Bin_op b -> out_i8 buf 13; out_i8 buf b
   | _ -> failwith "Pas de support de l'instruction disponible"
 ;;
 
@@ -153,6 +154,7 @@ let rec disassemble (buf : in_channel) : instr list =
       | 1 -> (disassemble buf)@[Push]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
+      | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
       | _ -> failwith "a vous de continuer"
 ;;
      (*
