@@ -107,11 +107,18 @@ let in_i32  (buf : in_channel) : int = input_binary_int buf
 
 
 (* Fonction d'assemblage d'instruction *)
-let assemble_instr (buf : out_channel) : instr -> unit = failwith "assemblage d'une instruction"
+let assemble_instr (buf : out_channel) : instr -> unit = function
+  | Consti n -> out_i8 buf 5; out_i32 buf n
+  | _ -> failwith "Pas de support de l'instruction disponible"
+;;
 
 
 (* Fonction d'assemblage d'une liste d'instructions *)
-let rec assemble (buf : out_channel) : instr list -> unit = failwith "assemblage d'une liste d'instruction"
+let rec assemble (buf : out_channel) : instr list -> unit = function
+  | [] -> ()
+  | h::q -> assemble_instr buf h; assemble buf q
+;;
+
 
 
 (* Ecrite pour vous: une fonction d'assemblage qui ecrit dans un fichier *)
@@ -120,8 +127,16 @@ let assemble_filename (name : string) (is : instr list) : unit =
   begin
     assemble buf is;
     close_out buf
-  end
+  end;;
 
+
+
+assemble_filename "RESULT.txt" [Consti 1] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 15] ;;
+assemble_filename "RESULT.txt" [Consti 8; Push; Consti 6; Bin_op 16] ;;
+assemble_filename "RESULT.txt" [Consti 6; Push; Consti 4; Bin_op 17] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 19] ;;
 
 
 (* fonction de desassemblage: stub *)
@@ -132,6 +147,10 @@ let rec disassemble (buf : in_channel) : instr list =
   match inc with
   | None   -> []  (* Nope: end of the file *)
   | Some c ->     (* Yep ! Carry on *)
+    match c with
+      | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
+      | _ -> failwith "a vous de continuer"
+;;
      (*
  
      ici, vous avez recupere un entier 8 bits (la valeur c) qui encode
@@ -140,8 +159,6 @@ let rec disassemble (buf : in_channel) : instr list =
      instruction.
       
       *)
-     failwith "a vous de continuer"
-
 
 
 (* Ecrite pour vous: une fonction de desassemblage qui lit d'un fichier *)
@@ -149,9 +166,9 @@ let disassemble_filename (name : string) : instr list =
   let buf = open_in_bin name in
   let insts = disassemble buf in
   let _ = close_in buf in
-  insts
+  insts;;
 
-
+disassemble_filename "RESULT.txt";;
 
 
 (**************************************************************)
@@ -459,7 +476,12 @@ let opcode (i : Ast.binop) = match i with
   | Div -> 18
   | Eq -> 19
   | Cat -> 20
-  | _ -> failwith "pas traite"
+  | _ -> failwith "pas traite";;
+
+
+let creer_instr (i : Ast.binop) = match i with
+  | App -> [Apply; Pop 1]
+  | _ -> [Bin_op(opcode i)];;
 
 
 
@@ -474,8 +496,7 @@ let rec compil : env * Ast.expr -> instr list = function
     end
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
-    compil ((envsucc env),e2) @
-    [Bin_op (opcode o)]
+    compil ((envsucc env),e2) @(creer_instr(o))
   | env, If(cond,e1,e2) -> let i1 = compil(env,e1) in
 			   let i2 = compil(env,e2) in
 			   compil (env,cond) @
@@ -485,6 +506,12 @@ let rec compil : env * Ast.expr -> instr list = function
 			     i1
   | env, Let(s,e1,e2) -> let new_env = (s,0)::(List.map succ env)
 			 in compil (env,e1) @ [Push] @ compil (new_env,e2) @ [Pop 1]
+  | env, Letf(f,p,e1,e2) -> let n_env = (p,0)::(List.map succ env) 
+			    in let nn_env = (f,0)::(List.map succ n_env) 
+			       in let c1 = compil(n_env, e1) 
+			       and c2 = compil(nn_env,e2) in 
+				  [Branch ((List.length c1)+2) ]@c1@[Return 1]
+				  @[Closure(0,(-((List.length c1) + 2)))]@[Push]@c2
   | _,_ -> failwith "TODO";;
 
 
@@ -513,6 +540,29 @@ compil(empty_env,Let("x",
 			    Ast.Const(Int(5)),Ast.Const(Int(24))),
 		     Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;
 
+(* V1 *)
+compil(empty_env, Letf("f","p", 
+		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
+		       Binop(Ast.App,Const(Int(1)),Ast.Var("f"))));;
+
+(* V1 bis *)
+compil(empty_env, Letf("f","p", 
+		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
+		       Binop(Ast.App,Ast.Var("f"),Const(Int(1)))));;
+
+(* Compil de V1 et V1 bis ne donne pas le même resultat *)
+
+(* Ne veut pas fonctionner *)
+(*compil(empty_env, Letf("f","p", 
+		       Ast.If(Binop(Ast.Eq,Const(Int(0)),Ast.Var("p")),
+			      Const(Int(0)),
+		              Binop(Ast.App,
+				    Binop(Ast.Sub,Ast.Var("p"),
+					  Const(Int(-1))),
+				    Ast.Var("f"))),
+		       Binop(Ast.App,Const(Int(1)),Ast.Var("f"))));;*)
+
+
 
 (* Pour lire le codex *)
 let lire_codex () = 
@@ -537,7 +587,7 @@ ex_compil;;
  ** ****** **)
 
 (* addition *)
-let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15|];;
+(*let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15|];;
 let ex_instru2 = [|Consti 3; Push; Consti 2; Bin_op 16|];;
 let ex_instru3 = [|Consti 3; Push; Consti 2; Bin_op 17|];;
 let ex_instru4 = [|Consti 24; Push; Consti 6; Bin_op 18|];;
@@ -557,7 +607,7 @@ let ex_instru12 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makebloc
 
 let ex_instru13 = [|Consti 1; Push; Consti 3; Push; Acc 1; Bin_op 15; Pop 1|];;
 
-let ex_instru14 = [|Consti 0; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; Branch 2;
+let ex_instru14 = [|Consti 1; Push; Consti 0; Bin_op 19; BranchIf 3; Consti 24; Branch 2;
  Consti 5; Push; Acc 0; Push; Consti 3; Bin_op 15; Pop 1|];;
 
 let ex_instru15 = [|Consti 24; Push; Consti 8; Push; Consti 1993; Push; Makeblock(0,3); GetBlock 2|];;
@@ -572,8 +622,11 @@ let ex_instru17 = [|Branch 17;
 		    Push; Consti (-1); Push; Acc 1; Apply; Pop 1; Push; Consti 9; Bin_op 17; Return 1;
 		    Closure(0,-17); Push; Consti (-1); Push; Acc 1; Apply; Pop 1|];;
 
+let ex_instru18 = [|Branch 6; Consti 2; Push; Acc 1; Bin_op 15; Return 1; 
+		    Closure (0, -6); Push; Consti 1; Push; Acc 1; Apply; Pop 1|];;
 
-(*
+
+
 print_string("\nResultat I add ->  "^string_of_mot(eval ex_instru1)^"\n\n");;
 print_endline("");;
 
@@ -618,19 +671,22 @@ print_endline("");;
 print_string("\nResultat XII MakeBlock  ->  "^string_of_mot(eval ex_instru12)^"\n\n");;
 print_endline("");;
 
-print_string("\nResultat XIII MakeBlock  ->  "^string_of_mot(eval ex_instru13)^"\n\n");;
+print_string("\nResultat XIII Let  ->  "^string_of_mot(eval ex_instru13)^"\n\n");;
 print_endline("");;
 
-print_string("\nResultat XIV MakeBlock  ->  "^string_of_mot(eval ex_instru14)^"\n\n");;
+print_string("\nResultat XIV Let + If  ->  "^string_of_mot(eval ex_instru14)^"\n\n");;
 print_endline("");;
 
 
-print_string("\nResultat XV MakeBlock  ->  "^string_of_mot(eval ex_instru15)^"\n\n");;
+print_string("\nResultat XV MakeBlock + GetBlock  ->  "^string_of_mot(eval ex_instru15)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat XVI Closure 1 ->  "^string_of_mot(eval ex_instru16)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat XVII Closure 2  ->  "^string_of_mot(eval ex_instru17)^"\n\n");;
+print_endline("");;
+
+
+print_string("\nResultat XVII Closure 3  ->  "^string_of_mot(eval ex_instru18)^"\n\n");;
 print_endline("");;*)
-
-(*
-print_string("\nResultat XVI MakeBlock  ->  "^string_of_mot(eval ex_instru16)^"\n\n");;
-print_endline("");;*)
-
-print_string("\nResultat XVII MakeBlock  ->  "^string_of_mot(eval ex_instru17)^"\n\n");;
-print_endline("");;
