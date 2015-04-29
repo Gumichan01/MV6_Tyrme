@@ -149,6 +149,8 @@ let assemble_instr (buf : out_channel) : instr -> unit = function
   | Acc n -> out_i8 buf 4; out_i32 buf n
   | Consti n -> out_i8 buf 5; out_i32 buf n
   | Pop n -> out_i8 buf 7; out_i32 buf n
+  | BranchIf n -> out_i8 buf 8; out_i32 buf n
+  | Branch n -> out_i8 buf 9; out_i32 buf n
   | Bin_op b -> out_i8 buf 13; out_i8 buf b
   | Str s -> out_i8 buf 14; out_i32 buf (String.length s); out_str buf s
   | _ -> failwith "Pas de support de l'instruction disponible"
@@ -185,6 +187,8 @@ assemble_filename "RESULT.txt" [Str "STRING ATTENDUE\n"; Push;
 				Consti 2; Push ; Consti 1; Push; Acc 2;Pop 3];;
 assemble_filename "RESULT.txt" [Str "str"; Push; Consti 2; Push ; 
 				Consti 1; Push; Acc 2;Pop 2; Str "cat\n"; Bin_op 20];;
+assemble_filename "RESULT.txt" [Consti 1; Push; Consti 0; Bin_op 19; 
+				BranchIf 3; Consti 24; Branch 2; Consti 5];;
 
 
 (* fonction de desassemblage: stub *)
@@ -201,6 +205,8 @@ let rec disassemble (buf : in_channel) : instr list =
       | 4 -> (disassemble buf)@[Acc (in_i32 buf)]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
+      | 8 -> (disassemble buf)@[BranchIf (in_i32 buf)]
+      | 9 -> (disassemble buf)@[Branch (in_i32 buf)]
       | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
       | 14 -> (disassemble buf)@[Str (in_str buf)]
       | _ -> failwith "a vous de continuer"
