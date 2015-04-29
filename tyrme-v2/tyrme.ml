@@ -146,6 +146,7 @@ let rec in_str (buf : in_channel) : string =
 let assemble_instr (buf : out_channel) : instr -> unit = function
   | Halt -> out_i8 buf 0
   | Push -> out_i8 buf 1
+  | Print -> out_i8 buf 2
   | Acc n -> out_i8 buf 4; out_i32 buf n
   | Consti n -> out_i8 buf 5; out_i32 buf n
   | Pop n -> out_i8 buf 7; out_i32 buf n
@@ -176,7 +177,7 @@ let assemble_filename (name : string) (is : instr list) : unit =
   end;;
 
 
-
+assemble_filename "RESULT.txt" [Str "ZZZ";Print] ;;
 assemble_filename "RESULT.txt" [Consti 1] ;;
 assemble_filename "RESULT.txt" [Consti 1; Push; Pop 1] ;;
 assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 15] ;;
@@ -207,6 +208,7 @@ let rec disassemble (buf : in_channel) : instr list =
     match c with
       | 0 -> (disassemble buf)@[Halt]
       | 1 -> (disassemble buf)@[Push]
+      | 2 -> (disassemble buf)@[Print]
       | 4 -> (disassemble buf)@[Acc (in_i32 buf)]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
