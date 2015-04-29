@@ -159,7 +159,6 @@ let assemble_instr (buf : out_channel) : instr -> unit = function
   | Closure(n,o) -> out_i8 buf 12; out_i32 buf n; out_i32 buf o
   | Bin_op b -> out_i8 buf 13; out_i8 buf b
   | Str s -> out_i8 buf 14; out_i32 buf (String.length s); out_str buf s
-  | _ -> failwith "Pas de support de l'instruction disponible"
 ;;
 
 
@@ -531,7 +530,7 @@ let eval (c : instr array) : mot =
 (**************************************************************)
 
 (* Le type environnement *)
-type env = (var * int) list
+type env = (Ast.var * int) list
 
 
 (* L'environnement d'utilisation des variables *)
@@ -539,7 +538,7 @@ let empty_env = []
 
 
 (* Représentation d'un type *)
-let repr = function
+let repr (v: Ast.value) = match v with
   | Int i      -> i
   | Bool true  -> 1
   | Bool false -> 0
@@ -654,9 +653,10 @@ compil(empty_env, Letf("f","p",
 
 (* Pour lire le codex *)
 let lire_codex () = 
-  print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))))
+  print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;
                
-
+(*print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;*)
+Array.of_list(disassemble_filename "codex.tm");;
            
 (* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
 let ex_compil () =
@@ -667,7 +667,6 @@ let ex_compil () =
   );;
 
 
-ex_compil;;
 
 
 (** ****** ** 
