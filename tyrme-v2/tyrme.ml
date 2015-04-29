@@ -151,6 +151,8 @@ let assemble_instr (buf : out_channel) : instr -> unit = function
   | Pop n -> out_i8 buf 7; out_i32 buf n
   | BranchIf n -> out_i8 buf 8; out_i32 buf n
   | Branch n -> out_i8 buf 9; out_i32 buf n
+  | GetBlock n -> out_i8 buf 10; out_i32 buf n
+  | Makeblock(t,n) -> out_i8 buf 11; out_i8 buf t; out_i32 buf n
   | Bin_op b -> out_i8 buf 13; out_i8 buf b
   | Str s -> out_i8 buf 14; out_i32 buf (String.length s); out_str buf s
   | _ -> failwith "Pas de support de l'instruction disponible"
@@ -190,6 +192,9 @@ assemble_filename "RESULT.txt" [Str "str"; Push; Consti 2; Push ;
 assemble_filename "RESULT.txt" [Consti 1; Push; Consti 0; Bin_op 19; 
 				BranchIf 3; Consti 24; Branch 2; Consti 5];;
 
+assemble_filename "RESULT.txt" [Consti 24; Push; Consti 8; Push;
+				Consti 1993; Push; Makeblock(0,3); GetBlock 2;]
+
 
 (* fonction de desassemblage: stub *)
 let rec disassemble (buf : in_channel) : instr list =
@@ -207,6 +212,13 @@ let rec disassemble (buf : in_channel) : instr list =
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
       | 8 -> (disassemble buf)@[BranchIf (in_i32 buf)]
       | 9 -> (disassemble buf)@[Branch (in_i32 buf)]
+      | 10 -> (disassemble buf)@[GetBlock (in_i32 buf)]
+      | 11 ->
+	begin
+	  let t = in_i8 buf in 
+	  let n = in_i32 buf in
+	  (disassemble buf)@[Makeblock(t,n)]
+	end
       | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
       | 14 -> (disassemble buf)@[Str (in_str buf)]
       | _ -> failwith "a vous de continuer"
