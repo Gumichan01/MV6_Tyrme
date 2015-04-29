@@ -147,13 +147,16 @@ let assemble_instr (buf : out_channel) : instr -> unit = function
   | Halt -> out_i8 buf 0
   | Push -> out_i8 buf 1
   | Print -> out_i8 buf 2
+  | Apply -> out_i8 buf 3
   | Acc n -> out_i8 buf 4; out_i32 buf n
   | Consti n -> out_i8 buf 5; out_i32 buf n
+  | Return n -> out_i8 buf 6; out_i32 buf n
   | Pop n -> out_i8 buf 7; out_i32 buf n
   | BranchIf n -> out_i8 buf 8; out_i32 buf n
   | Branch n -> out_i8 buf 9; out_i32 buf n
   | GetBlock n -> out_i8 buf 10; out_i32 buf n
   | Makeblock(t,n) -> out_i8 buf 11; out_i8 buf t; out_i32 buf n
+  | Closure(n,o) -> out_i8 buf 12; out_i32 buf n; out_i32 buf o
   | Bin_op b -> out_i8 buf 13; out_i8 buf b
   | Str s -> out_i8 buf 14; out_i32 buf (String.length s); out_str buf s
   | _ -> failwith "Pas de support de l'instruction disponible"
@@ -194,7 +197,10 @@ assemble_filename "RESULT.txt" [Consti 1; Push; Consti 0; Bin_op 19;
 				BranchIf 3; Consti 24; Branch 2; Consti 5];;
 
 assemble_filename "RESULT.txt" [Consti 24; Push; Consti 8; Push;
-				Consti 1993; Push; Makeblock(0,3); GetBlock 2;]
+				Consti 1993; Push; Makeblock(0,3); GetBlock 2;];;
+
+assemble_filename "RESULT.txt" [Branch 6; Consti 2; Push; Acc 1; Bin_op 15; Return 1; 
+				Closure (0, -6); Push; Consti 1; Push; Acc 1; Apply; Pop 1];;
 
 
 (* fonction de desassemblage: stub *)
@@ -209,8 +215,10 @@ let rec disassemble (buf : in_channel) : instr list =
       | 0 -> (disassemble buf)@[Halt]
       | 1 -> (disassemble buf)@[Push]
       | 2 -> (disassemble buf)@[Print]
+      | 3 -> (disassemble buf)@[Apply]
       | 4 -> (disassemble buf)@[Acc (in_i32 buf)]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
+      | 6 -> (disassemble buf)@[Return (in_i32 buf)]
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
       | 8 -> (disassemble buf)@[BranchIf (in_i32 buf)]
       | 9 -> (disassemble buf)@[Branch (in_i32 buf)]
@@ -220,6 +228,12 @@ let rec disassemble (buf : in_channel) : instr list =
 	  let t = in_i8 buf in 
 	  let n = in_i32 buf in
 	  (disassemble buf)@[Makeblock(t,n)]
+	end
+      | 12 ->
+	begin
+	  let n = in_i32 buf in 
+	  let o = in_i32 buf in
+	  (disassemble buf)@[Closure(n,o)]
 	end
       | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
       | 14 -> (disassemble buf)@[Str (in_str buf)]
