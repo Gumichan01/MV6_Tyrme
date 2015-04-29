@@ -144,8 +144,9 @@ let rec in_str (buf : in_channel) : string =
 
 (* Fonction d'assemblage d'instruction *)
 let assemble_instr (buf : out_channel) : instr -> unit = function
-  | Consti n -> out_i8 buf 5; out_i32 buf n
+  | Halt -> out_i8 buf 0
   | Push -> out_i8 buf 1
+  | Consti n -> out_i8 buf 5; out_i32 buf n
   | Pop n -> out_i8 buf 7; out_i32 buf n
   | Bin_op b -> out_i8 buf 13; out_i8 buf b
   | Str s -> out_i8 buf 14; out_i32 buf (String.length s); out_str buf s
@@ -194,6 +195,7 @@ let rec disassemble (buf : in_channel) : instr list =
   | None   -> []  (* Nope: end of the file *)
   | Some c ->     (* Yep ! Carry on *)
     match c with
+      | 0 -> (disassemble buf)@[Halt]
       | 1 -> (disassemble buf)@[Push]
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
