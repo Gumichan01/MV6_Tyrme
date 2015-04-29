@@ -106,12 +106,49 @@ let in_i8   (buf : in_channel) : int = int_of_char (input_char buf)
 let in_i32  (buf : in_channel) : int = input_binary_int buf
 
 
+let explode s =
+  let rec exp i l =
+    if i < 0 then l else exp (i - 1) (s.[i] :: l) in
+  exp (String.length s - 1) [];;
+
+
+let implode l =
+  let res = String.create (List.length l) in
+  let rec imp i = function
+  | [] -> res
+  | c :: l -> res.[i] <- c; imp (i + 1) l in
+  imp 0 l;;
+
+
+let rec out_str (buf : out_channel) (s : string) : unit =
+  let ch = explode s in
+  let rec out_lst b l =
+    match l with
+      | [] -> ()
+      | h::q -> output_char b h; out_lst b q
+  in out_lst buf ch;;
+
+
+let rec in_str (buf : in_channel) : string =
+  let len = in_i32 buf in
+  begin
+    let rec in_chr l acc =
+      if(acc == len)
+      then
+	implode l
+      else 
+	in_chr (l@[input_char buf]) (acc+1)
+    in in_chr [] 0
+  end;;
+
+
 (* Fonction d'assemblage d'instruction *)
 let assemble_instr (buf : out_channel) : instr -> unit = function
   | Consti n -> out_i8 buf 5; out_i32 buf n
   | Push -> out_i8 buf 1
-  | Pop n  -> out_i8 buf 7; out_i32 buf n
+  | Pop n -> out_i8 buf 7; out_i32 buf n
   | Bin_op b -> out_i8 buf 13; out_i8 buf b
+  | Str s -> out_i8 buf 14; out_i32 buf (String.length s); out_str buf s
   | _ -> failwith "Pas de support de l'instruction disponible"
 ;;
 
@@ -140,6 +177,12 @@ assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 15] ;;
 assemble_filename "RESULT.txt" [Consti 8; Push; Consti 6; Bin_op 16] ;;
 assemble_filename "RESULT.txt" [Consti 6; Push; Consti 4; Bin_op 17] ;;
 assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 19] ;;
+assemble_filename "RESULT.txt" [Str "B\n"; Push; Str "A"; Bin_op 20];;
+assemble_filename "RESULT.txt" [Str "HALT\n"; Halt; Consti 2];;
+assemble_filename "RESULT.txt" [Str "STRING ATTENDUE\n"; Push; 
+				Consti 2; Push ; Consti 1; Push; Acc 2;Pop 3];;
+assemble_filename "RESULT.txt" [Str "str"; Push; Consti 2; Push ; 
+				Consti 1; Push; Acc 2;Pop 2; Str "cat\n"; Bin_op 20];;
 
 
 (* fonction de desassemblage: stub *)
@@ -155,6 +198,7 @@ let rec disassemble (buf : in_channel) : instr list =
       | 5 -> (disassemble buf)@[Consti (in_i32 buf)]
       | 7 -> (disassemble buf)@[Pop (in_i32 buf)]
       | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
+      | 14 -> (disassemble buf)@[Str (in_str buf)]
       | _ -> failwith "a vous de continuer"
 ;;
      (*
