@@ -1,8 +1,7 @@
 Projet de MV6 -- annee 2015
 ===========================
 
-Nom1 - Prenom1 - NumEtudiant1
-Nom2 - Prenom2 - NumEtudiant2
+JEAN-PIERRE - Luxon - NumEtudiant1
 
 
 CONTENU
@@ -11,4 +10,16 @@ CONTENU
 Ici, dites ce que vous avez fait: les fonctions remplies, les
 problemes rencontres, les choix d'implementation.
 
+Faits : 
 
+ - Lecture et ecriture du code octet
+ - Compilation des expressions menant aux instructions demandées
+ - Fonction Machine() pour faire tourner la machine virtuelle
+
+Problèmes : 
+
+ - La compilation de l'expression relative à la fonction ne fonctionne pas totalement
+	selon l'ordre des éléments à une même profondeur dans l'arbre syntaxique, 
+	le resultat n'est pas le même.
+
+ - Les fonctions recursives n'ont pas pu être gérés.
