@@ -567,7 +567,7 @@ let opcode (i : Ast.binop) = match i with
 
 
 let creer_instr (i : Ast.binop) = match i with
-  | App -> [Apply; Pop 1]
+  | App -> [Apply]
   | _ -> [Bin_op(opcode i)];;
 
 
@@ -581,6 +581,9 @@ let rec compil : env * Ast.expr -> instr list = function
 	| String s -> [Str s]
 	| _ -> [Consti (repr v)]
     end
+  | env,Binop (App,e2,e1) -> compil (env,e1) @
+    [Push] @
+    compil ((envsucc env),e2) @(creer_instr(App))
   | env,Binop (o,e1,e2) -> compil (env,e1) @
     [Push] @
     compil ((envsucc env),e2) @(creer_instr(o))
@@ -598,10 +601,20 @@ let rec compil : env * Ast.expr -> instr list = function
 			       in let c1 = compil(n_env, e1) 
 			       and c2 = compil(nn_env,e2) in 
 				  [Branch ((List.length c1)+2) ]@c1@[Return 1]
-				  @[Closure(0,(-((List.length c1) + 2)))]@[Push]@c2
+				  @[Closure(0,(-((List.length c1) + 2)))]@[Push]@c2@[Pop 1]
   | _,_ -> failwith "TODO";;
 
 
+
+(* V1 *)
+compil(empty_env, Letf("f","p", 
+		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
+		       Binop(Ast.App,Const(Int(1)),Ast.Var("f"))));;
+
+(* V1 bis *)
+compil(empty_env, Letf("f","p", 
+		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
+		       Binop(Ast.App,Ast.Var("f"),Const(Int(1)))));;
 
 
 compil (empty_env,(Ast.Binop(Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
@@ -627,15 +640,6 @@ compil(empty_env,Let("x",
 			    Ast.Const(Int(5)),Ast.Const(Int(24))),
 		     Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;
 
-(* V1 *)
-compil(empty_env, Letf("f","p", 
-		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
-		       Binop(Ast.App,Const(Int(1)),Ast.Var("f"))));;
-
-(* V1 bis *)
-compil(empty_env, Letf("f","p", 
-		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
-		       Binop(Ast.App,Ast.Var("f"),Const(Int(1)))));;
 
 (* Compil de V1 et V1 bis ne donne pas le même resultat *)
 
