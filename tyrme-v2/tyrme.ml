@@ -607,7 +607,23 @@ let rec compil : env * Ast.expr -> instr list = function
 				  [Closure(0,(List.length c2)+3)]@[Push]@c2@[Pop 1]
 				  @[Halt]@c1@[Return 1]
   | env, Ast.Print(Ast.Var(s),e1) -> [Str s; Print]@(compil(env,e1)) 
-  | env, Ast.Pair(fs,sd) -> (compil(env,fs))@[Push]@(compil(env,sd))@[Push]@[Makeblock(0,2)];
+  | env, Ast.Pair(fs,sd) -> (compil(env,fs))@[Push]@(compil(env,sd))@[Push]@[Makeblock(0,2)]
+  | env, Ast.Fst(p) -> 
+    begin 
+      match p with
+	| Ast.Pair(_,_) -> (compil(env,p))@[GetBlock 0]
+	| Ast.Const(Int(n)) -> assert(n == 0 || n == 1 );
+	  [GetBlock n]
+	| _ -> failwith("Pas support pour ce Fst")
+    end
+  | env, Ast.Snd(p) -> 
+    begin 
+      match p with
+	| Ast.Pair(_,_) -> (compil(env,p))@[GetBlock 1]
+	| Ast.Const(Int(n)) -> assert(n == 0 || n == 1 );
+	  [GetBlock n]
+	| _ -> failwith("Pas support pour ce Snd")
+    end
   | _,_ -> failwith "TODO";;
 
 
@@ -649,7 +665,7 @@ compil(empty_env,Ast.Print(Ast.Var("Hello\n"),
 			   (Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))
 			)));;
 
-compil(empty_env,Ast.Pair(Ast.Const(Int(2)),Ast.Const(Int(1))));;
+compil(empty_env, Ast.Snd( Ast.Pair(Ast.Const(Int(2)),Ast.Const(Int(1))) ) );;
 
 
 (** Fonction simple *)
