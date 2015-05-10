@@ -69,7 +69,7 @@ let string_of_opcode = function
   | 18 -> "Div"
   | 19 -> "Eqi"
   | 20 -> "Cat"
-  | _ -> failwith "TODO"
+  | _ -> failwith "string_of_opcode() : opcode invalide"
 
 
 
@@ -215,7 +215,7 @@ let rec disassemble (buf : in_channel) : instr list =
 	end
       | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
       | 14 -> (disassemble buf)@[Str (in_str buf)]
-      | _ -> failwith "Code-octet non reconnu"
+      | _ -> failwith "disassemble() : Code-octet non reconnu"
 ;;
 
 
@@ -368,7 +368,7 @@ let machine (s : mv_state) (debug : bool) : mv_state =
 	  begin
 	    match s.acc with
 	      | PointString(a) -> print_string(a)
-	      | _ -> failwith "Print non supporté"
+	      | _ -> failwith "machine() : Print non supporté"
 	  end
 	| Apply ->
 	  begin
@@ -390,9 +390,9 @@ let machine (s : mv_state) (debug : bool) : mv_state =
 			    | _ -> failwith "erreur apply"
 			end
 		      else
-			failwith ("Mauvais TAG")
+			failwith ("machine() - Apply : Mauvais TAG")
 		    end
-		  | _ -> failwith "Mauvais appel"
+		  | _ -> failwith ("machine() - Apply : Bloc d'appel invalide")
 	      end
 	    end
 	  end
@@ -414,7 +414,7 @@ let machine (s : mv_state) (debug : bool) : mv_state =
 		begin
 		  match s.stack.(s.sp) with
 		    | MotInt(v) -> s.pc <- v; s.sp <- s.sp - 1
-		    | _ -> failwith "PC non valide"
+		    | _ -> failwith "machine()- Return : PC non valide"
 		end
 	      else ()
 	    end
@@ -430,7 +430,7 @@ let machine (s : mv_state) (debug : bool) : mv_state =
 	  begin
 	    match s.acc with
 	      | MotInt(i) -> s.pc <- s.pc + (if (i = 0) then n - 1  else 0 )
-	      | _ -> failwith "Branchement non valide\n"
+	      | _ -> failwith "machine() - BranchIf : Branchement non valide\n"
 	  end
 	| Branch n ->
 	  assert( (s.pc + n) > 0 && (s.pc + n) < Array.length s.code );
@@ -443,7 +443,7 @@ let machine (s : mv_state) (debug : bool) : mv_state =
 		  assert(n < List.length l);
 		  s.acc <- ((Array.of_list l).(n))
 		end
-	      | _ -> failwith("GetBlock s'applique sur un type non reconnu")
+	      | _ -> failwith("machine() : GetBlock s'applique sur un type invalide")
 	  end
 	| Makeblock(t,n) ->
 	  s.acc <- (PointBloc(t,(make_block n s.stack (s.sp + 1) )));
@@ -460,37 +460,37 @@ let machine (s : mv_state) (debug : bool) : mv_state =
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a+b))
-		      | _ -> failwith "Addition non valide"
+		      | _ -> failwith "machine() : Addition non valide"
 		  end  
 		| 16 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a-b))
-		      | _ -> failwith "Soustraction non valide"  
+		      | _ -> failwith "machine() : Soustraction non valide"  
 		  end
 		| 17 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt((a*b))
-		      | _ -> failwith "Multiplication non valide"  
+		      | _ -> failwith "machine() : Multiplication non valide"  
 		  end
 		| 18 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> assert(b <> 0);s.acc <- MotInt((a/b))
-		      | _ -> failwith "Division non valide"  
+		      | _ -> failwith "machine() : Division non valide"  
 		  end
 		| 19 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | MotInt(a),MotInt(b) -> s.acc <- MotInt(int_equal a b)
-		      | _ -> failwith "Egalité non valide"  
+		      | _ -> failwith "machine() : Egalité non valide"  
 		  end
 		| 20 ->
 		  begin
 		    match s.stack.(s.sp), s.acc with
 		      | PointString(a),PointString(b) -> s.acc <- PointString(a^b)
-		      | _ -> failwith "Concatenation non valide"  
+		      | _ -> failwith "machine() : Concatenation non valide"  
 		  end
 		| _ -> 
 		  failwith "Ce binop n'est pas supporte"
@@ -540,7 +540,7 @@ let repr (v: Ast.value) = match v with
   | Bool true  -> 1
   | Bool false -> 0
   | Unit -> 0
-  | _ -> failwith "repr non supporte"
+  | _ -> failwith "repr() : type value non supporté"
 
 
 (** Incrémente la position d'une variable dans la pile **)
@@ -561,7 +561,7 @@ let opcode (i : Ast.binop) = match i with
   | Div -> 18
   | Eq -> 19
   | Cat -> 20
-  | _ -> failwith "pas traite";;
+  | _ -> failwith "opcode() : opération invalide";;
 
 
 (** Selon le type de binop revoie l'instruction d'application 
@@ -610,7 +610,7 @@ let rec compil : env * Ast.expr -> instr list = function
 	| Ast.Pair(_,_) -> (compil(env,p))@[GetBlock 0]
 	| Ast.Const(Int(n)) -> assert(n == 0 || n == 1 );
 	  [GetBlock n]
-	| _ -> failwith("Pas support pour ce Fst")
+	| _ -> failwith("compil() : Paramètre du Fst invalide")
     end
   | env, Ast.Snd(p) -> 
     begin 
@@ -618,9 +618,9 @@ let rec compil : env * Ast.expr -> instr list = function
 	| Ast.Pair(_,_) -> (compil(env,p))@[GetBlock 1]
 	| Ast.Const(Int(n)) -> assert(n == 0 || n == 1 );
 	  [GetBlock n]
-	| _ -> failwith("Pas support pour ce Snd")
+	| _ -> failwith("compil() : Paramètre du Snd invalide")
     end
-  | _,_ -> failwith "TODO";;
+  | _,_ -> failwith "compil() : expression non reconnue ";;
 
 
 
