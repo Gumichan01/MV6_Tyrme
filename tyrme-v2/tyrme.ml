@@ -333,14 +333,32 @@ let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
     end
   end;;
 
+(** Affiche les informations de débogage avant l'executon de l'instruction **)
+let debug_pre_display (s: mv_state) (deb: bool) = 
+  match deb with
+    | true -> 
+      print_string("==== State BEFORE ====\n");
+      print_state s
+    | false -> ()
+;;
+
+(** Affiche les informations de débogage après l'executon de l'instruction **)
+let debug_post_display (s: mv_state) (deb: bool) = 
+  match deb with
+    | true -> 
+      print_string("==== State AFTER ====\n");
+      print_state s;
+      print_endline("Appuyer sur Entrée pour continuer l'execution");
+      ignore(Scanf.bscanf (Scanf.Scanning.stdin) "%c" (fun c -> () ))
+    | false -> ()
+;;
 
 
-(** La fonction d'execution de la machine **)
-let machine (s : mv_state) : mv_state =
+(** La fonction d'execution de la machine en mode release ou debug **)
+let machine (s : mv_state) (debug : bool) : mv_state =
   let stop = ref false in
   while s.pc < Array.length s.code && !stop == false do
-    print_string("==== State BEFORE ====\n");
-    print_state s;
+    debug_pre_display s debug;
     begin
       match s.code.(s.pc) with
 	| Halt ->
@@ -480,18 +498,26 @@ let machine (s : mv_state) : mv_state =
    	      s.sp <- s.sp -1(* On pop après chaque opération *)
 	  end
     end;
-    print_string("==== State AFTER ====\n");
-    print_state s;
-    print_endline("");
+    debug_post_display s debug;
     s.pc <- s.pc + 1;
   done; s;;
 
 
 
 (** La fonction d'evaluation: retourne l'accumulateur a la fin de l'evaluation **)
-let eval (c : instr array) : mot =  
-  let s = machine (init c) in get_acc s
+let eval (c : instr array) : mot =
+  print_endline(" ======================");
+  print_endline(" ==== Mode Release ====");
+  print_endline(" ======================");
+  let s = machine (init c) false in get_acc s
 
+
+(** La fonction d'evaluation pour le debug **)
+let eval_debug (c : instr array) : mot =  
+  print_endline(" ====================");
+  print_endline(" ==== Mode Debug ====");
+  print_endline(" ====================");
+  let s = machine (init c) true in get_acc s
 
 
 
@@ -816,7 +842,7 @@ let inst = compil(empty_env, parse "let f x = x * x  in f 10");;
 
 assemble_filename "test-tyrme-jeanpier.txt" inst;;
 let x = string_of_mot
-	       (eval
+	       (eval_debug
 		  (Array.of_list(disassemble_filename "test-tyrme-jeanpier.txt"))
 	       )
 ;;
