@@ -247,7 +247,7 @@ and list_to_string (li : mot list) : string =
 
 
 
-(** Egalité (pas utile) **)
+(** Egalité, utilisée dans la machine virtuelle **)
 let int_equal (x : int) (y : int ) : int =
   if(x = y) then 1 else 0;;
 
@@ -332,7 +332,8 @@ let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
       done; !st
     end
   end;;
-  
+
+
 
 (** La fonction d'execution de la machine **)
 let machine (s : mv_state) : mv_state =
