@@ -607,6 +607,7 @@ let rec compil : env * Ast.expr -> instr list = function
 				  [Closure(0,(List.length c2)+3)]@[Push]@c2@[Pop 1]
 				  @[Halt]@c1@[Return 1]
   | env, Ast.Print(Ast.Var(s),e1) -> [Str s; Print]@(compil(env,e1)) 
+  | env, Ast.Pair(fs,sd) -> (compil(env,fs))@[Push]@(compil(env,sd))@[Push]@[Makeblock(0,2)];
   | _,_ -> failwith "TODO";;
 
 
@@ -647,6 +648,8 @@ compil(empty_env,Ast.Print(Ast.Var("Hello\n"),
 			(Ast.Binop
 			   (Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))
 			)));;
+
+compil(empty_env,Ast.Pair(Ast.Const(Int(2)),Ast.Const(Int(1))));;
 
 
 (** Fonction simple *)
