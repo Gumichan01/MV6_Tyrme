@@ -179,30 +179,8 @@ let assemble_filename (name : string) (is : instr list) : unit =
   end;;
 
 
-assemble_filename "RESULT.txt" [Str "ZZZ";Print] ;;
-assemble_filename "RESULT.txt" [Consti 1] ;;
-assemble_filename "RESULT.txt" [Consti 1; Push; Pop 1] ;;
-assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 15] ;;
-assemble_filename "RESULT.txt" [Consti 8; Push; Consti 6; Bin_op 16] ;;
-assemble_filename "RESULT.txt" [Consti 6; Push; Consti 4; Bin_op 17] ;;
-assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 19] ;;
-assemble_filename "RESULT.txt" [Str "B\n"; Push; Str "A"; Bin_op 20];;
-assemble_filename "RESULT.txt" [Str "HALT\n"; Halt; Consti 2];;
-assemble_filename "RESULT.txt" [Str "STRING ATTENDUE\n"; Push; 
-				Consti 2; Push ; Consti 1; Push; Acc 2;Pop 3];;
-assemble_filename "RESULT.txt" [Str "str"; Push; Consti 2; Push ; 
-				Consti 1; Push; Acc 2;Pop 2; Str "cat\n"; Bin_op 20];;
-assemble_filename "RESULT.txt" [Consti 1; Push; Consti 0; Bin_op 19; 
-				BranchIf 3; Consti 24; Branch 2; Consti 5];;
 
-assemble_filename "RESULT.txt" [Consti 24; Push; Consti 8; Push;
-				Consti 1993; Push; Makeblock(0,3); GetBlock 2;];;
-
-assemble_filename "RESULT.txt" [Branch 6; Consti 2; Push; Acc 1; Bin_op 15; Return 1; 
-				Closure (0, -6); Push; Consti 1; Push; Acc 1; Apply; Pop 1];;
-
-
-(* fonction de desassemblage: stub *)
+(* fonction de desassemblage*)
 let rec disassemble (buf : in_channel) : instr list =
   (* Get the next char, and make sure to capture the end of the file *)
   let inc = (try Some (in_i8 buf) with | End_of_file -> None) in
@@ -238,14 +216,6 @@ let rec disassemble (buf : in_channel) : instr list =
       | 14 -> (disassemble buf)@[Str (in_str buf)]
       | _ -> failwith "a vous de continuer"
 ;;
-     (*
- 
-     ici, vous avez recupere un entier 8 bits (la valeur c) qui encode
-     une instruction. Derriere, d'autre octets donnent potentiellement
-     les arguments. A vous de les recuperer et d'en faire une
-     instruction.
-      
-      *)
 
 
 (* Ecrite pour vous: une fonction de desassemblage qui lit d'un fichier *)
@@ -255,14 +225,14 @@ let disassemble_filename (name : string) : instr list =
   let _ = close_in buf in
   insts;;
 
-disassemble_filename "RESULT.txt";;
 
 
 (**************************************************************)
 (* Machine virtuelle                                          *)
 (**************************************************************)
 
-
+(* Renvoie la chaine associé à un mot, Si on a un tag,
+alors on a une recursion croisée avec list_to_string *)
 let rec string_of_mot : mot -> string = function
   | MotInt n -> string_of_int n^" "
   | PointString s -> s^" "
@@ -275,10 +245,8 @@ and list_to_string (li : mot list) : string =
   in list_to_str_rec li "" ;;
 
 
-string_of_mot (PointBloc(0,[MotInt 5;PointString "toto"; PointBloc(0, [MotInt 0; MotInt 1])]));;
-string_of_mot (PointBloc(0,[MotInt 1]));;
 
-
+(* Egalité *)
 let int_equal (x : int) (y : int ) : int =
   if(x = y) then 1 else 0;;
 
@@ -293,7 +261,7 @@ type mv_state = {
 }
 
 
-(* retourne l'accumulateur de l'etat donne en argument *)
+(* Retourne l'accumulateur de l'etat donne en argument *)
 let get_acc (s : mv_state) : mot = s.acc
 
 
@@ -339,9 +307,6 @@ let make_block (n : int) (pile : mot array) (taille : int) : mot list =
   in make_block_rec n pile taille 0 [];;
 
 
-(** Tester make_block **)
-(*make_block 4 [|MotInt 2; MotInt 18; MotInt 3; MotInt 21; MotInt 1024|] 4;;*)
-
 
 (* Afficher l'état de la pile *)
 let print_state (s : mv_state) : unit =
@@ -371,7 +336,7 @@ let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
 let machine (s : mv_state) : mv_state =
   let stop = ref false in
   while s.pc < Array.length s.code && !stop == false do
-    print_string("==== State before ====\n");
+    print_string("==== State BEFORE ====\n");
     print_state s;
     begin
       match s.code.(s.pc) with
@@ -423,7 +388,6 @@ let machine (s : mv_state) : mv_state =
 	  then
 	    begin
 	      s.sp <- s.sp - n;
-	      print_string("SP : "^string_of_int s.sp^" I\n");
 	      if( s.sp >= 0 )
 	      then
 		begin
@@ -513,8 +477,9 @@ let machine (s : mv_state) : mv_state =
    	      s.sp <- s.sp -1(* On pop après chaque opération *)
 	  end
     end;
-    print_string("==== State after ====\n");
+    print_string("==== State AFTER ====\n");
     print_state s;
+    print_endline("");
     s.pc <- s.pc + 1;
   done; s;;
 
@@ -650,6 +615,32 @@ let ex_compil () =
      TEST 
  ** ****** **)
 
+(** Assemblage *)
+(*assemble_filename "RESULT.txt" [Str "ZZZ";Print] ;;
+assemble_filename "RESULT.txt" [Consti 1] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push; Pop 1] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 15] ;;
+assemble_filename "RESULT.txt" [Consti 8; Push; Consti 6; Bin_op 16] ;;
+assemble_filename "RESULT.txt" [Consti 6; Push; Consti 4; Bin_op 17] ;;
+assemble_filename "RESULT.txt" [Consti 1; Push; Consti 4; Bin_op 19] ;;
+assemble_filename "RESULT.txt" [Str "B\n"; Push; Str "A"; Bin_op 20];;
+assemble_filename "RESULT.txt" [Str "HALT\n"; Halt; Consti 2];;
+assemble_filename "RESULT.txt" [Str "STRING ATTENDUE\n"; Push; 
+				Consti 2; Push ; Consti 1; Push; Acc 2;Pop 3];;
+assemble_filename "RESULT.txt" [Str "str"; Push; Consti 2; Push ; 
+				Consti 1; Push; Acc 2;Pop 2; Str "cat\n"; Bin_op 20];;
+assemble_filename "RESULT.txt" [Consti 1; Push; Consti 0; Bin_op 19; 
+				BranchIf 3; Consti 24; Branch 2; Consti 5];;
+
+assemble_filename "RESULT.txt" [Consti 24; Push; Consti 8; Push;
+				Consti 1993; Push; Makeblock(0,3); GetBlock 2;];;
+
+assemble_filename "RESULT.txt" [Branch 6; Consti 2; Push; Acc 1; Bin_op 15; Return 1; 
+				Closure (0, -6); Push; Consti 1; Push; Acc 1; Apply; Pop 1];;*)
+
+(*disassemble_filename "RESULT.txt";;*)
+
+
 (*print_string (string_of_mot 
 		(eval 
 		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
@@ -660,12 +651,12 @@ let ex_compil () =
 (** Compil *)
 
 (** Print *)
-compil(empty_env,Ast.Print(Ast.Var("Hello\n"),
+(*compil(empty_env,Ast.Print(Ast.Var("Hello\n"),
 			(Ast.Binop
 			   (Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))
-			)));;
+			)));;*)
 
-compil(empty_env, Ast.Snd( Ast.Pair(Ast.Const(Int(2)),Ast.Const(Int(1))) ) );;
+(*compil(empty_env, Ast.Snd( Ast.Pair(Ast.Const(Int(2)),Ast.Const(Int(1))) ) );;*)
 
 
 (** Fonction simple *)
@@ -813,3 +804,17 @@ print_endline("");;
 
 print_string("\nResultat XX Closure 5  ->  "^string_of_mot(eval ex_instru19bis)^"\n\n");;
 print_endline("");;*)
+
+
+(** Test complet *)
+
+print_string("\n ======== Test parse/compil/assemble/disassemble/eval ======== \n\n");;
+let inst = compil(empty_env, parse "let f x = x * x  in f 10");;
+
+assemble_filename "test-tyrme-jeanpier.txt" inst;;
+let x = string_of_mot
+	       (eval
+		  (Array.of_list(disassemble_filename "test-tyrme-jeanpier.txt"))
+	       )
+;;
+print_endline("Resultat de l'évaluation : "^x);;
