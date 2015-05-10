@@ -669,10 +669,10 @@ assemble_filename "RESULT.txt" [Branch 6; Consti 2; Push; Acc 1; Bin_op 15; Retu
 
 (*disassemble_filename "RESULT.txt";;*)
 
-
-(*print_string (string_of_mot 
+(*
+print_string (string_of_mot 
 		(eval 
-		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
+		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in let y = 2 in f (y+8)")))
 		)
 );;*)
 
