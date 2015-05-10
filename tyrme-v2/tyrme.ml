@@ -666,16 +666,24 @@ Array.of_list(disassemble_filename "codex.tm");;
 let ex_compil () =
   print_string (string_of_mot 
 		  (eval 
-		     (Array.of_list(compil(empty_env, parse "let x = 1 in x + 2 ;;")))
+		     (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
 		  )
   );;
 
-
+ex_compil();;
 
 
 (** ****** ** 
      TEST 
  ** ****** **)
+
+print_string (string_of_mot 
+		(eval 
+		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
+		)
+);;
+
+
 
 (* addition *)
 (*let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15|];;
