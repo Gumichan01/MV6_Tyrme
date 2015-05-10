@@ -347,7 +347,9 @@ let make_block (n : int) (pile : mot array) (taille : int) : mot list =
 let print_state (s : mv_state) : unit =
   print_string("PC : ");
   print_int(s.pc);print_endline("");
-  print_endline( string_of_instr(s.code.(s.pc)) );;
+  print_endline( string_of_instr(s.code.(s.pc)) );
+  print_string("ACC : ");print_string(string_of_mot(s.acc) );print_endline("");
+  print_string("STACK : ");print_stack s.stack s.sp; print_endline("\n");;
  
 
 let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
@@ -369,6 +371,7 @@ let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
 let machine (s : mv_state) : mv_state =
   let stop = ref false in
   while s.pc < Array.length s.code && !stop == false do
+    print_string("==== State before ====\n");
     print_state s;
     begin
       match s.code.(s.pc) with
@@ -510,8 +513,8 @@ let machine (s : mv_state) : mv_state =
    	      s.sp <- s.sp -1(* On pop après chaque opération *)
 	  end
     end;
-    print_string("ACC : ");print_string(string_of_mot(s.acc) );print_endline("");
-    print_string("STACK : ");print_stack s.stack s.sp; print_endline("\n");
+    print_string("==== State after ====\n");
+    print_state s;
     s.pc <- s.pc + 1;
   done; s;;
 
@@ -603,6 +606,7 @@ let rec compil : env * Ast.expr -> instr list = function
 			       and c2 = compil(nn_env,e2) in
 				  [Closure(0,(List.length c2)+3)]@[Push]@c2@[Pop 1]
 				  @[Halt]@c1@[Return 1]
+  | env, Ast.Print(Ast.Var(s),e1) -> [Str s; Print]@(compil(env,e1)) 
   | _,_ -> failwith "TODO";;
 
 
@@ -615,7 +619,6 @@ let lire_codex () =
 (*print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;*)
 Array.of_list(disassemble_filename "codex.tm");;
 
-lire_codex ();;
            
 (* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
 let ex_compil () =
@@ -630,20 +633,28 @@ let ex_compil () =
      TEST 
  ** ****** **)
 
-print_string (string_of_mot 
+(*print_string (string_of_mot 
 		(eval 
 		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
 		)
-);;
+);;*)
 
 
 (** Compil *)
 
+(** Print *)
+compil(empty_env,Ast.Print(Ast.Var("Hello\n"),
+			(Ast.Binop
+			   (Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))
+			)));;
+
+
+(** Fonction simple *)
 (*compil(empty_env, Letf("f","p", 
 		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
 		       Binop(Ast.App,Ast.Var("f"),Const(Int(1)))));;
 
-
+(** Opérateur *)
 compil (empty_env,(Ast.Binop(Ast.Add,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
 compil (empty_env,(Ast.Binop(Ast.Sub,Ast.Const(Int(8)),Ast.Const(Int(6)))));;
 compil (empty_env,(Ast.Binop(Ast.Mult,Ast.Const(Int(6)),Ast.Const(Int(4)))));;
@@ -652,11 +663,11 @@ compil (empty_env,(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),Ast.Const(Int(4)))));;
 compil (empty_env, (Ast.Binop(Ast.Cat,
 			      Ast.Const(Ast.String("hello ")),
 			      Ast.Const(String(" world!")))));;
-
+(** If *)
 compil (empty_env, Ast.If(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),
 				    Ast.Const(Int(0))),
 				    Ast.Const(Int(5)),Ast.Const(Int(24))));;
-
+(** Let *)
 compil(empty_env,Let("x",
 	   Const(Int(1)),
 	   Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;
@@ -764,7 +775,6 @@ print_endline("");;
 
 print_string("\nResultat XIV Let + If  ->  "^string_of_mot(eval ex_instru14)^"\n\n");;
 print_endline("");;
-
 
 print_string("\nResultat XV MakeBlock + GetBlock  ->  "^string_of_mot(eval ex_instru15)^"\n\n");;
 print_endline("");;
