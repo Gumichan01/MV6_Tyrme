@@ -1,25 +1,51 @@
-Projet de MV6 -- annee 2015
+Projet de MV6 -- Année 2015
 ===========================
 
-JEAN-PIERRE - Luxon - NumEtudiant1
+JEAN-PIERRE - Luxon - 21402679
 
 
 CONTENU
 =======
 
-Ici, dites ce que vous avez fait: les fonctions remplies, les
-problemes rencontres, les choix d'implementation.
 
-Faits : 
+Fonctionnalités réalisées : 
 
- - Lecture et ecriture du code octet
+ - Lecture et ecriture du code octet (assemblage et desassemblage)
  - Compilation des expressions menant aux instructions demandées
  - Fonction Machine() pour faire tourner la machine virtuelle
+ - Debuggeur
+
+
+
+Choix techniques :
+
+ Pour le debogage, j'ai dû modifié la fonction machine pour que son exécution
+ se fasse en mode "release" ou "debug". En mode debug, la machine fait une
+ exécution pas à pas et attend que l'utilisateur appuie sur [Entrée] pour poursuivre
+ l'exécution.
+ 
+ La foncton eval() lance la machine en mode release. Pour lancer la machine en 
+ mode debug, il faut lancer la function eval_debug().
+
+
 
 Problèmes : 
 
- - La compilation de l'expression relative à la fonction ne fonctionne pas totalement
-	selon l'ordre des éléments à une même profondeur dans l'arbre syntaxique, 
-	le resultat n'est pas le même.
+ 1 - La compilation des expressions contenant plusieurs let imbriqués et 
+ impliquant des fonctions ne fonctionne pas correctement.
+ Par exemple, l'expression : let f x = x*x in let g y = f y in g 10
+ est bien compilée mais ne génère pas la bonne liste d'instructions. De ce fait,
+ L'exécution au niveau de la machine virtuelle échoue.
+ 
+ 
+ 2 - Les instructions issues du codex ne sont pas exécutées correctement. En effet, 
+ même si la fonction disassemble_filename génère bien le tableau d'instructions,
+ L'exécution de ces instructions semble provoquer une longue boucle qui mène à une 
+ exception.
+ 
+ 
+ 3 - Le dernier problème concernait l'expression Leq. En effet, je ne comprenais
+ pas la tâche relative à cette expression. Par conséquent, je n'ai pu l'intégrer
+ dans la machine virtuelle. 
 
- - Les fonctions recursives n'ont pas pu être gérés.
+
