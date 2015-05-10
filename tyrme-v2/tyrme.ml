@@ -26,7 +26,7 @@ type mot =
   | PointBloc of (tag * (mot list))
 
 
-
+(** Les instructions machines **)
 type instr = 
   | Halt 
   | Push 
@@ -46,8 +46,8 @@ type instr =
 
 
 
-(* Ne traite que les opcode des opérations binaires *)
-let string_of_opcode_binop = function
+(** Renvoie l'instruction associée à l'opcode **)
+let string_of_opcode = function
   | 0 -> "Halt"
   | 1 -> "Push"
   | 2 -> "Print"
@@ -73,14 +73,14 @@ let string_of_opcode_binop = function
 
 
 
-(* Affiche les chaines associées au instructions *)
+(** Affiche les chaines associées au instructions **)
 let string_of_instr : instr -> string = function
   | Halt -> "Halt ;"
   | Push -> "Push ;"
   | Print -> "Print ;"
   | Apply -> "Apply ;"
   | Acc n -> "Acc "^(string_of_int n)^" ;"
-  | Bin_op v -> "Binop "^(string_of_opcode_binop v)^" ;"
+  | Bin_op v -> "Binop "^(string_of_opcode v)^" ;"
   | Consti n -> "Const "^(string_of_int n)^" ;"
   | Return n -> "Return "^(string_of_int n)^" ;"
   | Pop n -> "Pop "^(string_of_int n)^" ;"
@@ -98,20 +98,21 @@ let string_of_instr : instr -> string = function
 (**************************************************************)
 
 
-(* Fonctions de lecture et d'ecriture d'entier 8bits et 32bits *)
+(** Fonctions de lecture et d'ecriture d'entier 8bits et 32bits **)
 let out_i8  (buf : out_channel) (i : int) : unit = output_char buf (char_of_int i)
 let out_i32 (buf : out_channel) (i : int) : unit = output_binary_int buf i 
 
 let in_i8   (buf : in_channel) : int = int_of_char (input_char buf)
 let in_i32  (buf : in_channel) : int = input_binary_int buf
 
-
+(** Conversion string/char[] **)
 let explode s =
   let rec exp i l =
     if i < 0 then l else exp (i - 1) (s.[i] :: l) in
   exp (String.length s - 1) [];;
 
 
+(** Conversion char[]/string **)
 let implode l =
   let res = String.create (List.length l) in
   let rec imp i = function
@@ -120,6 +121,7 @@ let implode l =
   imp 0 l;;
 
 
+(** Ecrit une string dans un fichier **)
 let rec out_str (buf : out_channel) (s : string) : unit =
   let ch = explode s in
   let rec out_lst b l =
@@ -129,6 +131,7 @@ let rec out_str (buf : out_channel) (s : string) : unit =
   in out_lst buf ch;;
 
 
+(** Lis une string dans un fichier **)
 let rec in_str (buf : in_channel) : string =
   let len = in_i32 buf in
   begin
@@ -142,7 +145,7 @@ let rec in_str (buf : in_channel) : string =
   end;;
 
 
-(* Fonction d'assemblage d'instruction *)
+(** Fonction d'assemblage d'instruction **)
 let assemble_instr (buf : out_channel) : instr -> unit = function
   | Halt -> out_i8 buf 0
   | Push -> out_i8 buf 1
@@ -162,7 +165,7 @@ let assemble_instr (buf : out_channel) : instr -> unit = function
 ;;
 
 
-(* Fonction d'assemblage d'une liste d'instructions *)
+(** Fonction d'assemblage d'une liste d'instructions **)
 let rec assemble (buf : out_channel) : instr list -> unit = function
   | [] -> ()
   | h::q -> assemble_instr buf h; assemble buf q
@@ -170,7 +173,7 @@ let rec assemble (buf : out_channel) : instr list -> unit = function
 
 
 
-(* Ecrite pour vous: une fonction d'assemblage qui ecrit dans un fichier *)
+(** Ecrite pour vous: une fonction d'assemblage qui ecrit dans un fichier **)
 let assemble_filename (name : string) (is : instr list) : unit = 
   let buf = open_out_bin name in
   begin
@@ -180,14 +183,12 @@ let assemble_filename (name : string) (is : instr list) : unit =
 
 
 
-(* fonction de desassemblage*)
+(** Fonction de desassemblage **)
 let rec disassemble (buf : in_channel) : instr list =
-  (* Get the next char, and make sure to capture the end of the file *)
   let inc = (try Some (in_i8 buf) with | End_of_file -> None) in
-  (* Test if there were a char *)
   match inc with
-  | None   -> []  (* Nope: end of the file *)
-  | Some c ->     (* Yep ! Carry on *)
+  | None   -> []
+  | Some c ->
     match c with
       | 0 -> (disassemble buf)@[Halt]
       | 1 -> (disassemble buf)@[Push]
@@ -214,7 +215,7 @@ let rec disassemble (buf : in_channel) : instr list =
 	end
       | 13 -> (disassemble buf)@[Bin_op (in_i8 buf)]
       | 14 -> (disassemble buf)@[Str (in_str buf)]
-      | _ -> failwith "a vous de continuer"
+      | _ -> failwith "Code-octet non reconnu"
 ;;
 
 
@@ -231,8 +232,8 @@ let disassemble_filename (name : string) : instr list =
 (* Machine virtuelle                                          *)
 (**************************************************************)
 
-(* Renvoie la chaine associé à un mot, Si on a un tag,
-alors on a une recursion croisée avec list_to_string *)
+(** Renvoie la chaine associé à un mot, Si on a un tag,
+alors on a une recursion croisée avec list_to_string **)
 let rec string_of_mot : mot -> string = function
   | MotInt n -> string_of_int n^" "
   | PointString s -> s^" "
@@ -246,7 +247,7 @@ and list_to_string (li : mot list) : string =
 
 
 
-(* Egalité *)
+(** Egalité (pas utile) **)
 let int_equal (x : int) (y : int ) : int =
   if(x = y) then 1 else 0;;
 
@@ -261,12 +262,12 @@ type mv_state = {
 }
 
 
-(* Retourne l'accumulateur de l'etat donne en argument *)
+(** Retourne l'accumulateur de l'etat donne en argument **)
 let get_acc (s : mv_state) : mot = s.acc
 
 
 
-(* Pour construire l'etat de la machine au debut de l'execution *)
+(** Pour construire l'etat de la machine au debut de l'execution **)
 let init (c : instr array) : mv_state =
   { 
     code = c; 
@@ -277,7 +278,7 @@ let init (c : instr array) : mv_state =
 
 
 
-(* Affiche l'état de la pile *)
+(** Affiche l'état de la pile **)
 let print_stack st sp =
   let rec print_stack_rec stack pointer ac =
     if( ac > pointer)
@@ -292,7 +293,7 @@ let print_stack st sp =
 
 
 
-
+(** Créer un bloc relatif **)
 let make_block (n : int) (pile : mot array) (taille : int) : mot list =
    assert( n >= 0 && n <= taille);
   let rec make_block_rec (m : int) (p : mot array) (t : int) 
@@ -308,7 +309,7 @@ let make_block (n : int) (pile : mot array) (taille : int) : mot list =
 
 
 
-(* Afficher l'état de la pile *)
+(** Afficher l'état de la pile **)
 let print_state (s : mv_state) : unit =
   print_string("PC : ");
   print_int(s.pc);print_endline("");
@@ -317,6 +318,7 @@ let print_state (s : mv_state) : unit =
   print_string("STACK : ");print_stack s.stack s.sp; print_endline("\n");;
  
 
+(** On ecrit le bloc relatif à la fonction appelée dans la pile lors **)
 let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
   let ar = Array.of_list li in
   begin
@@ -332,7 +334,7 @@ let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
   end;;
   
 
-(* La fonction d'execution de la machine *)
+(** La fonction d'execution de la machine **)
 let machine (s : mv_state) : mv_state =
   let stop = ref false in
   while s.pc < Array.length s.code && !stop == false do
@@ -485,10 +487,9 @@ let machine (s : mv_state) : mv_state =
 
 
 
-(* La fonction d'evaluation: retourne l'accumulateur a la fin de l'evaluation *)
+(** La fonction d'evaluation: retourne l'accumulateur a la fin de l'evaluation **)
 let eval (c : instr array) : mot =  
   let s = machine (init c) in get_acc s
-
 
 
 
@@ -498,15 +499,15 @@ let eval (c : instr array) : mot =
 (* Compilation                                                *)
 (**************************************************************)
 
-(* Le type environnement *)
+(** Le type environnement **)
 type env = (Ast.var * int) list
 
 
-(* L'environnement d'utilisation des variables *)
+(** L'environnement d'utilisation des variables **)
 let empty_env = []
 
 
-(* Représentation d'un type *)
+(** Représentation d'un type **)
 let repr (v: Ast.value) = match v with
   | Int i      -> i
   | Bool true  -> 1
@@ -514,17 +515,18 @@ let repr (v: Ast.value) = match v with
   | Unit -> 0
   | _ -> failwith "repr non supporte"
 
-(* Incrémente la position d'une variable dans la pile *)
+
+(** Incrémente la position d'une variable dans la pile **)
 let succ sv = match sv with
   | s, i -> (s,(i+1))
 
 
-(* Applique la fonction succ sur tous les éléments de la liste *)
+(** Applique la fonction succ sur tous les éléments de la liste **)
 let envsucc e = List.map succ e
 
 
 
-(* Convertit un binop en opcode *)
+(** Convertit un binop en opcode **)
 let opcode (i : Ast.binop) = match i with
   | Add -> 15
   | Sub -> 16
@@ -535,13 +537,15 @@ let opcode (i : Ast.binop) = match i with
   | _ -> failwith "pas traite";;
 
 
+(** Selon le type de binop revoie l'instruction d'application 
+    ou d'opérateur binaire **)
 let creer_instr (i : Ast.binop) = match i with
   | App -> [Apply]
   | _ -> [Bin_op(opcode i)];;
 
 
 
-(* La fonction de compilation *)
+(** La fonction de compilation **)
 let rec compil : env * Ast.expr -> instr list = function
   | env,Var s -> [Acc (List.assoc s env)]
   | _,Const v -> 
@@ -594,15 +598,13 @@ let rec compil : env * Ast.expr -> instr list = function
 
 
 
-(* Pour lire le codex *)
+(** Pour lire le codex **)
 let lire_codex () = 
   print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;
-               
-(*print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;*)
-Array.of_list(disassemble_filename "codex.tm");;
+
 
            
-(* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
+(** Exemple de compilation qui doit marcher et rendre la valeur 3 **)
 let ex_compil () =
   print_string (string_of_mot 
 		  (eval 
