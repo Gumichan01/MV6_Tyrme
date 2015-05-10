@@ -367,13 +367,14 @@ let writeStack (li : mot list) (stack : mot array) (sp : int) : int =
 
 (* La fonction d'execution de la machine *)
 let machine (s : mv_state) : mv_state =
-  while s.pc < Array.length s.code do
+  let stop = ref false in
+  while s.pc < Array.length s.code && !stop == false do
     print_state s;
     begin
       match s.code.(s.pc) with
 	| Halt ->
 	  s.sp <- -1;
-	  raise Exit
+	  stop := true
 	| Print ->
 	  begin
 	    match s.acc with
@@ -594,25 +595,51 @@ let rec compil : env * Ast.expr -> instr list = function
 			     i2 @
 			     [Branch (1 + List.length i1)] @
 			     i1
-  | env, Let(s,e1,e2) -> let new_env = (s,0)::(List.map succ env)
+  | env, Let(s,e1,e2) -> let new_env = (s,0)::(envsucc env)
 			 in compil (env,e1) @ [Push] @ compil (new_env,e2) @ [Pop 1]
-  | env, Letf(f,p,e1,e2) -> let n_env = (p,0)::(List.map succ env) 
-			    in let nn_env = (f,0)::(List.map succ n_env) 
+  | env, Letf(f,p,e1,e2) -> let n_env = (p,0)::(envsucc env) 
+			    in let nn_env = (f,0)::(envsucc n_env) 
 			       in let c1 = compil(n_env, e1) 
-			       and c2 = compil(nn_env,e2) in 
-				  [Branch ((List.length c1)+2) ]@c1@[Return 1]
-				  @[Closure(0,(-((List.length c1) + 2)))]@[Push]@c2@[Pop 1]
+			       and c2 = compil(nn_env,e2) in
+				  [Closure(0,(List.length c2)+3)]@[Push]@c2@[Pop 1]
+				  @[Halt]@c1@[Return 1]
   | _,_ -> failwith "TODO";;
 
 
 
-(* V1 *)
-compil(empty_env, Letf("f","p", 
-		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
-		       Binop(Ast.App,Const(Int(1)),Ast.Var("f"))));;
 
-(* V1 bis *)
-compil(empty_env, Letf("f","p", 
+(* Pour lire le codex *)
+let lire_codex () = 
+  print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;
+               
+(*print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;*)
+Array.of_list(disassemble_filename "codex.tm");;
+
+lire_codex ();;
+           
+(* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
+let ex_compil () =
+  print_string (string_of_mot 
+		  (eval 
+		     (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
+		  )
+  );;
+
+
+(** ****** ** 
+     TEST 
+ ** ****** **)
+
+print_string (string_of_mot 
+		(eval 
+		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
+		)
+);;
+
+
+(** Compil *)
+
+(*compil(empty_env, Letf("f","p", 
 		       Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
 		       Binop(Ast.App,Ast.Var("f"),Const(Int(1)))));;
 
@@ -638,54 +665,9 @@ compil(empty_env,Let("x",
 		     Ast.If(Ast.Binop(Ast.Eq,Ast.Const(Int(1)),
 				      Ast.Const(Int(0))),
 			    Ast.Const(Int(5)),Ast.Const(Int(24))),
-		     Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;
+		     Binop(Ast.Add,Ast.Var("x"),Const(Int(3))) ) );;*)
 
-
-(* Compil de V1 et V1 bis ne donne pas le même resultat *)
-
-(* Ne veut pas fonctionner *)
-(*compil(empty_env, Letf("f","p", 
-		       Ast.If(Binop(Ast.Eq,Const(Int(0)),Ast.Var("p")),
-			      Const(Int(0)),
-		              Binop(Ast.App,
-				    Binop(Ast.Sub,Ast.Var("p"),
-					  Const(Int(-1))),
-				    Ast.Var("f"))),
-		       Binop(Ast.App,Const(Int(1)),Ast.Var("f"))));;*)
-
-
-
-(* Pour lire le codex *)
-let lire_codex () = 
-  print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;
-               
-(*print_string (string_of_mot (eval (Array.of_list(disassemble_filename "codex.tm"))));;*)
-Array.of_list(disassemble_filename "codex.tm");;
-           
-(* Exemple de compilation qui doit marcher et rendre la valeur 3 *)
-let ex_compil () =
-  print_string (string_of_mot 
-		  (eval 
-		     (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
-		  )
-  );;
-
-ex_compil();;
-
-
-(** ****** ** 
-     TEST 
- ** ****** **)
-
-print_string (string_of_mot 
-		(eval 
-		   (Array.of_list(compil(empty_env, parse "let f x = x * x  in f 2")))
-		)
-);;
-
-
-
-(* addition *)
+(** addition *)
 (*let ex_instru1 = [|Consti 3; Push; Consti 2; Bin_op 15|];;
 let ex_instru2 = [|Consti 3; Push; Consti 2; Bin_op 16|];;
 let ex_instru3 = [|Consti 3; Push; Consti 2; Bin_op 17|];;
@@ -722,7 +704,14 @@ let ex_instru17 = [|Branch 17;
 		    Closure(0,-17); Push; Consti (-1); Push; Acc 1; Apply; Pop 1|];;
 
 let ex_instru18 = [|Branch 6; Consti 2; Push; Acc 1; Bin_op 15; Return 1; 
-		    Closure (0, -6); Push; Consti 1; Push; Acc 1; Apply; Pop 1|];;
+                    Closure (0, -6); Push; Consti 1; Push; Acc 1; Apply; Pop 1|];;
+
+let ex_instru19 = [|Closure (0, 7); Push; Consti 1; Push; Acc 1; Apply; Pop 1;Halt;
+		    Consti 2; Push; Acc 1; Bin_op 15; Return 1;|];;
+
+let ex_instru19bis = Array.of_list(compil(empty_env, Letf("f","p", 
+					    Binop(Ast.Add,Ast.Const(Int(2)),Ast.Var("p")),
+					    Binop(Ast.App,Ast.Var("f"),Const(Int(1))))));;
 
 
 
@@ -787,5 +776,11 @@ print_string("\nResultat XVII Closure 2  ->  "^string_of_mot(eval ex_instru17)^"
 print_endline("");;
 
 
-print_string("\nResultat XVII Closure 3  ->  "^string_of_mot(eval ex_instru18)^"\n\n");;
+print_string("\nResultat XVIII Closure 3  ->  "^string_of_mot(eval ex_instru18)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat XIX Closure 4  ->  "^string_of_mot(eval ex_instru19)^"\n\n");;
+print_endline("");;
+
+print_string("\nResultat XX Closure 5  ->  "^string_of_mot(eval ex_instru19bis)^"\n\n");;
 print_endline("");;*)
